@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 rootProject.name = "Rapid-Chat-New"
 include(":app")
 include(":voice-recorder")
+include(":chat")
