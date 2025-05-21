@@ -5,15 +5,15 @@ coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
-lifecycleRuntimeKtx = "2.6.1"
+kotlinxDatetimeVersion = "0.6.0"
+lifecycleRuntimeKtx = "2.9.0"
 activityCompose = "1.10.1"
-composeBom = "2024.09.00"
-kotlinStdlib = "2.0.21"
-kotlinTest = "2.0.21"
-runner = "1.5.2"
-core = "1.5.0"
-kotlinxCoroutines = "1.8.0"
-kotlinxDatetime = "0.5.0"
+composeBom = "2025.05.01" # For Android Jetpack Compose
+runner = "1.6.2"
+core = "1.6.1"
+kotlinxCoroutines = "1.10.2"
+kotlinxDatetime = "0.6.0"
+jetbrainsComposeVersion = "1.8.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -29,18 +29,27 @@ androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
-kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlinStdlib" }
-kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlinTest" }
+androidx-material3-lib = { group = "androidx.compose.material3", name = "material3" } # Renamed alias to avoid conflict if you add compose.material3 from JB
+
+# kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" } # Usually not needed
+kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" } # Ensure version matches kotlin
 androidx-runner = { group = "androidx.test", name = "runner", version.ref = "runner" }
-androidx-core = { group = "androidx.test", name = "core", version.ref = "core" }
+androidx-core-test = { group = "androidx.test", name = "core", version.ref = "core" } # Renamed alias for clarity (was androidx-core)
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
-kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinxDatetime" }
+kotlinx-datetime-v060 = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetimeVersion" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "jetbrainsComposeVersion" }
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "jetbrainsComposeVersion" }
+# Choose one: material or material3 for JetBrains Compose
+compose-material = { module = "org.jetbrains.compose.material:material", version.ref = "jetbrainsComposeVersion" } # Material 2
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "jetbrainsComposeVersion" } # Material 3
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "jetbrainsComposeVersion" }
+compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "jetbrainsComposeVersion" }
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
-
+jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "jetbrainsComposeVersion" } # << CORRECTED
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
