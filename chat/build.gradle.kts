@@ -29,6 +29,7 @@ kotlin {
                 api(compose.foundation)
                 api(compose.ui)
                 api(compose.material3)
+                implementation(libs.compose.material.icons.extended)
 
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 api(compose.components.resources)

@@ -13,7 +13,7 @@ runner = "1.6.2"
 core = "1.6.1"
 kotlinxCoroutines = "1.10.2"
 kotlinxDatetime = "0.6.0"
-jetbrainsComposeVersion = "1.8.0"
+jetbrainsComposeVersion = "1.7.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -42,6 +42,7 @@ compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", v
 # Choose one: material or material3 for JetBrains Compose
 compose-material = { module = "org.jetbrains.compose.material:material", version.ref = "jetbrainsComposeVersion" } # Material 2
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "jetbrainsComposeVersion" } # Material 3
+compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "jetbrainsComposeVersion" } # Material Icons Extended
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "jetbrainsComposeVersion" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "jetbrainsComposeVersion" }
 
