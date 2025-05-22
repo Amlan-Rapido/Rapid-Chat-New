@@ -1,5 +1,5 @@
 [versions]
-agp = "8.10.0"
+agp = "8.6.0"
 kotlin = "2.0.21"
 coreKtx = "1.16.0"
 junit = "4.13.2"
@@ -8,12 +8,12 @@ espressoCore = "3.6.1"
 kotlinxDatetimeVersion = "0.6.0"
 lifecycleRuntimeKtx = "2.9.0"
 activityCompose = "1.10.1"
-composeBom = "2025.05.01" # For Android Jetpack Compose
+composeBom = "2025.05.01"
 runner = "1.6.2"
 core = "1.6.1"
-kotlinxCoroutines = "1.10.2"
-kotlinxDatetime = "0.6.0"
-jetbrainsComposeVersion = "1.7.3"
+kotlinxCoroutines = "1.8.1"
+jetbrainsComposeVersion = "1.6.11"
+androidxComposeCompiler = "1.5.14"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
