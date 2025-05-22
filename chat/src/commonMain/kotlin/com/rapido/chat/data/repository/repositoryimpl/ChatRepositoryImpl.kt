@@ -33,6 +33,11 @@ class ChatRepositoryImpl(
     // Current recording for when a voice message is being created
     private var currentRecording: RecordedAudio? = null
 
+    init {
+        // Add initial welcome messages
+        addWelcomeMessages()
+    }
+
     override fun getChatMessages(): Flow<List<ChatMessage>> = _messages.asStateFlow()
     
     override val voiceRecorderState: StateFlow<VoiceRecorderState> = voiceRecorderIntegration.state
@@ -128,5 +133,30 @@ class ChatRepositoryImpl(
 
     private fun generateRandomId(): String {
         return Random.nextInt(100000, 999999).toString()
+    }
+    
+    private fun addWelcomeMessages() {
+        val currentTime = Clock.System.now().toEpochMilliseconds()
+        
+        // Add a welcome message from the system
+        val welcomeMessage = ChatMessage(
+            id = generateRandomId(),
+            sender = Sender.SYSTEM,
+            timestamp = currentTime - 60000,
+            type = MessageType.TEXT,
+            content = "Welcome to Rapid Chat! This is a simple chat application where you can send text and voice messages."
+        )
+        
+        // Add a hint about voice messages
+        val voiceHintMessage = ChatMessage(
+            id = generateRandomId(),
+            sender = Sender.SYSTEM,
+            timestamp = currentTime,
+            type = MessageType.TEXT,
+            content = "Try recording a voice message by long-pressing the microphone button."
+        )
+        
+        // Add both messages
+        _messages.value = listOf(welcomeMessage, voiceHintMessage)
     }
 } 

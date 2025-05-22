@@ -20,17 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.rapido.chat.ui.utils.formatDuration
 
-/**
- * A control for playing and pausing audio recordings.
- *
- * @param messageId ID of the message containing this audio
- * @param audioDuration Duration of the audio in milliseconds
- * @param isPlaying Whether the audio is currently playing
- * @param currentPosition Current playback position in milliseconds
- * @param onPlayClick Callback when the play button is clicked
- * @param onPauseClick Callback when the pause button is clicked
- */
 @Composable
 fun AudioPlaybackControl(
     messageId: String,
@@ -59,7 +50,7 @@ fun AudioPlaybackControl(
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }
-            
+
             Column {
                 // Progress bar
                 LinearProgressIndicator(
@@ -67,9 +58,9 @@ fun AudioPlaybackControl(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.primary
                 )
-                
+
                 Spacer(modifier = Modifier.height(4.dp))
-                
+
                 // Duration text
                 Row(
                     modifier = Modifier.fillMaxWidth()
@@ -78,9 +69,9 @@ fun AudioPlaybackControl(
                         text = formatDuration(currentPosition),
                         style = MaterialTheme.typography.labelSmall
                     )
-                    
+
                     Spacer(modifier = Modifier.weight(1f))
-                    
+
                     Text(
                         text = formatDuration(audioDuration),
                         style = MaterialTheme.typography.labelSmall
@@ -89,11 +80,4 @@ fun AudioPlaybackControl(
             }
         }
     }
-}
-
-fun formatDuration(durationMs: Long): String {
-    val totalSeconds = durationMs / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "${minutes}:${seconds.toString().padStart(2, '0')}"
 }

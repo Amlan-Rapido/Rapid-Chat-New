@@ -14,11 +14,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel for the chat screen that handles business logic and state management.
- *
- * @param chatRepository The repository for chat operations
- */
 class ChatViewModel(
     private val chatRepository: ChatRepository
 ) {
@@ -27,8 +22,7 @@ class ChatViewModel(
 
     private val _uiState = MutableStateFlow<ChatUiState>(ChatUiState.Loading)
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
-    
-    // Voice recorder state from the repository
+
     val voiceRecorderState: StateFlow<VoiceRecorderState> = chatRepository.voiceRecorderState
     
     init {

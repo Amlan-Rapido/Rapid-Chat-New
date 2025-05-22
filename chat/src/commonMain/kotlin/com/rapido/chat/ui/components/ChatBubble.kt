@@ -19,21 +19,54 @@ import androidx.compose.ui.unit.dp
 import com.rapido.chat.data.model.ChatMessage
 import com.rapido.chat.data.model.MessageType
 import com.rapido.chat.data.model.Sender
+import com.rapido.chat.ui.utils.formatDuration
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
-/**
- * A chat bubble component that displays a message.
- *
- * @param message The chat message to display
- * @param onPlayVoice Callback when the play button is clicked for a voice message
- * @param onPauseVoice Callback when the pause button is clicked for a voice message
- * @param isCurrentlyPlaying Whether this voice message is currently playing
- * @param currentPlaybackPositionMs Current playback position in milliseconds (for voice messages)
- */
 @Composable
 fun ChatBubble(
+    message: ChatMessage,
+    onPlayVoice: (String) -> Unit = {},
+    onPauseVoice: (String) -> Unit = {},
+    isCurrentlyPlaying: Boolean = false,
+    currentPlaybackPositionMs: Long = 0
+) {
+    when (message.sender) {
+        Sender.SYSTEM -> SystemMessage(message)
+        else -> RegularChatBubble(
+            message = message,
+            onPlayVoice = onPlayVoice,
+            onPauseVoice = onPauseVoice,
+            isCurrentlyPlaying = isCurrentlyPlaying,
+            currentPlaybackPositionMs = currentPlaybackPositionMs
+        )
+    }
+}
+
+@Composable
+private fun SystemMessage(message: ChatMessage) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = message.content,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .padding(vertical = 8.dp, horizontal = 16.dp)
+        )
+    }
+}
+
+@Composable
+private fun RegularChatBubble(
     message: ChatMessage,
     onPlayVoice: (String) -> Unit = {},
     onPauseVoice: (String) -> Unit = {},
@@ -95,7 +128,7 @@ fun ChatBubble(
                 }
                 
                 Text(
-                    text = formatTimestamp(message.timestamp),
+                    text = formatDuration(message.timestamp),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (isUserMessage) 
                         MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f) 
@@ -113,13 +146,3 @@ fun ChatBubble(
     }
 }
 
-private fun formatTimestamp(timestamp: Long): String {
-    // Using kotlinx-datetime for better cross-platform compatibility
-    val instant = Instant.fromEpochMilliseconds(timestamp)
-    val localDateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-    
-    val hour = localDateTime.hour.toString().padStart(2, '0')
-    val minute = localDateTime.minute.toString().padStart(2, '0')
-    
-    return "$hour:$minute"
-}
