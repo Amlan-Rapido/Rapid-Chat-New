@@ -14,7 +14,7 @@ sealed class VoiceRecorderState {
     ) : VoiceRecorderState()
     
     data class Error(
-        val exception: Exception,
+        val exception: VoiceRecorderException,
         val source: ErrorSource
     ) : VoiceRecorderState()
     

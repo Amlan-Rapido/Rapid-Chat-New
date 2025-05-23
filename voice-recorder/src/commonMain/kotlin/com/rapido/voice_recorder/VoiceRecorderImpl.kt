@@ -36,7 +36,7 @@ class VoiceRecorderImpl(
 
     override suspend fun startRecording() {
         when (state.value) {
-            is VoiceRecorderState.Recording -> throw IllegalStateException("Already recording")
+            is VoiceRecorderState.Recording -> throw VoiceRecorderException.AlreadyRecordingException()
             is VoiceRecorderState.Preview -> {
                 // Stop playback before starting recording
                 stopPlayback()
@@ -59,8 +59,9 @@ class VoiceRecorderImpl(
             }
 
         } catch (e: Exception) {
-            _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.RECORDING)
-            throw e
+            val wrappedException = VoiceRecorderException.RecordingFailedException(cause = e)
+            _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.RECORDING)
+            throw wrappedException
         }
     }
 
@@ -73,11 +74,12 @@ class VoiceRecorderImpl(
                     _state.value = VoiceRecorderState.Preview(recordedAudio, playing = false)
                     return recordedAudio
                 } catch (e: Exception) {
-                    _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.RECORDING)
-                    throw e
+                    val wrappedException = VoiceRecorderException.RecordingFailedException(cause = e)
+                    _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.RECORDING)
+                    throw wrappedException
                 }
             }
-            else -> throw IllegalStateException("Not recording, current state: $currentState")
+            else -> throw VoiceRecorderException.InvalidStateException("Not recording, current state: $currentState")
         }
     }
 
@@ -89,11 +91,12 @@ class VoiceRecorderImpl(
                     platformRecorder.cancelPlatformRecording()
                     _state.value = VoiceRecorderState.Idle
                 } catch (e: Exception) {
-                    _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.RECORDING)
-                    throw e
+                    val wrappedException = VoiceRecorderException.RecordingFailedException(cause = e)
+                    _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.RECORDING)
+                    throw wrappedException
                 }
             }
-            else -> throw IllegalStateException("Not recording")
+            else -> throw VoiceRecorderException.InvalidStateException("Not recording")
         }
     }
     
@@ -106,11 +109,12 @@ class VoiceRecorderImpl(
                     _state.value = VoiceRecorderState.Preview(audio, playing = true)
                     startPositionTracking(audio)
                 } catch (e: Exception) {
-                    _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.PLAYBACK)
-                    throw e
+                    val wrappedException = VoiceRecorderException.PlaybackFailedException(cause = e)
+                    _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.PLAYBACK)
+                    throw wrappedException
                 }
             }
-            else -> throw IllegalStateException("Cannot start playback in current state: ${state.value}")
+            else -> throw VoiceRecorderException.InvalidStateException("Cannot start playback in current state: ${state.value}")
         }
     }
     
@@ -126,12 +130,13 @@ class VoiceRecorderImpl(
                             currentPositionMs = platformRecorder.getCurrentPlaybackPositionMs()
                         )
                     } catch (e: Exception) {
-                        _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.PLAYBACK)
-                        throw e
+                        val wrappedException = VoiceRecorderException.PlaybackFailedException(cause = e)
+                        _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.PLAYBACK)
+                        throw wrappedException
                     }
                 }
             }
-            else -> throw IllegalStateException("Cannot pause in current state: ${state.value}")
+            else -> throw VoiceRecorderException.InvalidStateException("Cannot pause in current state: ${state.value}")
         }
     }
     
@@ -144,12 +149,13 @@ class VoiceRecorderImpl(
                         _state.value = currentState.copy(playing = true)
                         startPositionTracking(currentState.audio)
                     } catch (e: Exception) {
-                        _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.PLAYBACK)
-                        throw e
+                        val wrappedException = VoiceRecorderException.PlaybackFailedException(cause = e)
+                        _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.PLAYBACK)
+                        throw wrappedException
                     }
                 }
             }
-            else -> throw IllegalStateException("Cannot resume in current state: ${state.value}")
+            else -> throw VoiceRecorderException.InvalidStateException("Cannot resume in current state: ${state.value}")
         }
     }
     
@@ -165,8 +171,9 @@ class VoiceRecorderImpl(
                             currentPositionMs = 0
                         )
                     } catch (e: Exception) {
-                        _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.PLAYBACK)
-                        throw e
+                        val wrappedException = VoiceRecorderException.PlaybackFailedException(cause = e)
+                        _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.PLAYBACK)
+                        throw wrappedException
                     }
                 }
             }
@@ -190,8 +197,9 @@ class VoiceRecorderImpl(
             }
             result
         } catch (e: Exception) {
-            _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.FILE_OPERATION)
-            false
+            val wrappedException = VoiceRecorderException.FileOperationException(cause = e)
+            _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.FILE_OPERATION)
+            throw wrappedException
         }
     }
 
