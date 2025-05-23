@@ -45,7 +45,7 @@ actual class PlatformVoiceRecorder {
     actual suspend fun startPlatformRecording(outputFilePath: String) {
         try {
             val audioSession = AVAudioSession.sharedInstance()
-            audioSession.setCategory("record", null)
+            audioSession.setCategory(platform.AVFAudio.AVAudioSessionCategoryRecord, null)
             audioSession.setActive(true, null)
 
             // Create a file URL for the recording
@@ -155,7 +155,7 @@ actual class PlatformVoiceRecorder {
             
             // Set up audio session for playback
             val audioSession = AVAudioSession.sharedInstance()
-            audioSession.setCategory("playback", null)
+            audioSession.setCategory(platform.AVFAudio.AVAudioSessionCategoryPlayback, null)
             audioSession.setActive(true, null)
             
             // Create URL for the audio file

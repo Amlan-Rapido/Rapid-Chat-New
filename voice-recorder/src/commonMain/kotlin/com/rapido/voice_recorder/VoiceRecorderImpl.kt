@@ -1,9 +1,10 @@
 package com.rapido.voice_recorder
 
-import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,17 +15,20 @@ import kotlinx.datetime.Clock
 
 class VoiceRecorderImpl(
     private val platformRecorder: PlatformVoiceRecorder,
-): VoiceRecorder {
+    private val platformAudioFileManager: PlatformAudioFileManager
+) : VoiceRecorder {
     private val _state = MutableStateFlow<VoiceRecorderState>(VoiceRecorderState.Idle)
     override val state: StateFlow<VoiceRecorderState> = _state.asStateFlow()
 
     private var recordingStartTimeMs: Long = 0
-    private var playbackJob: Job? = null
-    private var currentAudio: RecordedAudio? = null
+    private var updateJob: Job? = null
+    
+    // Create a CoroutineScope with a SupervisorJob to handle errors gracefully
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     
     init {
         platformRecorder.setOnPlaybackCompletedListener {
-            CoroutineScope(Dispatchers.Default).launch {
+            scope.launch {
                 handlePlaybackCompleted()
             }
         }
@@ -33,7 +37,7 @@ class VoiceRecorderImpl(
     override suspend fun startRecording() {
         when (state.value) {
             is VoiceRecorderState.Recording -> throw IllegalStateException("Already recording")
-            is VoiceRecorderState.Playing, is VoiceRecorderState.Paused -> {
+            is VoiceRecorderState.Preview -> {
                 // Stop playback before starting recording
                 stopPlayback()
                 startRecordingInternal()
@@ -44,15 +48,16 @@ class VoiceRecorderImpl(
     
     private suspend fun startRecordingInternal() {
         try {
-            // Generate a unique output file path
-            val outputFilePath = generateOutputFilePath()
-
-            // Start platform recording
+            val outputFilePath = platformAudioFileManager.createRecordingFilePath()
             platformRecorder.startPlatformRecording(outputFilePath)
-
-            // Update state and record start time
             recordingStartTimeMs = getCurrentTimeMs()
             _state.value = VoiceRecorderState.Recording(0L)
+
+            launchRepeatingUpdate(100) {
+                val duration = getCurrentTimeMs() - recordingStartTimeMs
+                _state.value = VoiceRecorderState.Recording(duration)
+            }
+
         } catch (e: Exception) {
             _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.RECORDING)
             throw e
@@ -63,13 +68,9 @@ class VoiceRecorderImpl(
         when (val currentState = state.value) {
             is VoiceRecorderState.Recording -> {
                 try {
-                    // Stop platform recording
+                    updateJob?.cancel()
                     val recordedAudio = platformRecorder.stopPlatformRecording()
-
-                    // Update state
-                    _state.value = VoiceRecorderState.Completed(recordedAudio)
-                    currentAudio = recordedAudio
-
+                    _state.value = VoiceRecorderState.Preview(recordedAudio, playing = false)
                     return recordedAudio
                 } catch (e: Exception) {
                     _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.RECORDING)
@@ -84,10 +85,8 @@ class VoiceRecorderImpl(
         when (state.value) {
             is VoiceRecorderState.Recording -> {
                 try {
-                    // Cancel platform recording
+                    updateJob?.cancel()
                     platformRecorder.cancelPlatformRecording()
-
-                    // Update state
                     _state.value = VoiceRecorderState.Idle
                 } catch (e: Exception) {
                     _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.RECORDING)
@@ -100,15 +99,11 @@ class VoiceRecorderImpl(
     
     override suspend fun playRecording(audio: RecordedAudio) {
         when (state.value) {
-            is VoiceRecorderState.Idle, 
-            is VoiceRecorderState.Completed, 
-            is VoiceRecorderState.Paused -> {
+            is VoiceRecorderState.Idle,
+            is VoiceRecorderState.Preview -> {
                 try {
-                    currentAudio = audio
                     platformRecorder.startPlatformPlayback(audio.filePath)
-                    _state.value = VoiceRecorderState.Playing(audio, 0)
-                    
-                    // Start position tracking
+                    _state.value = VoiceRecorderState.Preview(audio, playing = true)
                     startPositionTracking(audio)
                 } catch (e: Exception) {
                     _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.PLAYBACK)
@@ -121,17 +116,19 @@ class VoiceRecorderImpl(
     
     override suspend fun pausePlayback() {
         when (val currentState = state.value) {
-            is VoiceRecorderState.Playing -> {
-                try {
-                    platformRecorder.pausePlatformPlayback()
-                    playbackJob?.cancel()
-                    _state.value = VoiceRecorderState.Paused(
-                        currentState.audio, 
-                        platformRecorder.getCurrentPlaybackPositionMs()
-                    )
-                } catch (e: Exception) {
-                    _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.PLAYBACK)
-                    throw e
+            is VoiceRecorderState.Preview -> {
+                if (currentState.playing) {
+                    try {
+                        platformRecorder.pausePlatformPlayback()
+                        updateJob?.cancel()
+                        _state.value = currentState.copy(
+                            playing = false,
+                            currentPositionMs = platformRecorder.getCurrentPlaybackPositionMs()
+                        )
+                    } catch (e: Exception) {
+                        _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.PLAYBACK)
+                        throw e
+                    }
                 }
             }
             else -> throw IllegalStateException("Cannot pause in current state: ${state.value}")
@@ -140,19 +137,16 @@ class VoiceRecorderImpl(
     
     override suspend fun resumePlayback() {
         when (val currentState = state.value) {
-            is VoiceRecorderState.Paused -> {
-                try {
-                    platformRecorder.resumePlatformPlayback()
-                    _state.value = VoiceRecorderState.Playing(
-                        currentState.audio, 
-                        currentState.positionMs
-                    )
-                    
-                    // Resume position tracking
-                    startPositionTracking(currentState.audio)
-                } catch (e: Exception) {
-                    _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.PLAYBACK)
-                    throw e
+            is VoiceRecorderState.Preview -> {
+                if (!currentState.playing) {
+                    try {
+                        platformRecorder.resumePlatformPlayback()
+                        _state.value = currentState.copy(playing = true)
+                        startPositionTracking(currentState.audio)
+                    } catch (e: Exception) {
+                        _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.PLAYBACK)
+                        throw e
+                    }
                 }
             }
             else -> throw IllegalStateException("Cannot resume in current state: ${state.value}")
@@ -160,62 +154,62 @@ class VoiceRecorderImpl(
     }
     
     override suspend fun stopPlayback() {
-        when (state.value) {
-            is VoiceRecorderState.Playing, 
-            is VoiceRecorderState.Paused -> {
-                try {
-                    platformRecorder.stopPlatformPlayback()
-                    playbackJob?.cancel()
-                    currentAudio?.let {
-                        _state.value = VoiceRecorderState.Completed(it)
-                    } ?: run {
-                        _state.value = VoiceRecorderState.Idle
+        when (val currentState = state.value) {
+            is VoiceRecorderState.Preview -> {
+                if (currentState.playing) {
+                    try {
+                        platformRecorder.stopPlatformPlayback()
+                        updateJob?.cancel()
+                        _state.value = currentState.copy(
+                            playing = false,
+                            currentPositionMs = 0
+                        )
+                    } catch (e: Exception) {
+                        _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.PLAYBACK)
+                        throw e
                     }
-                } catch (e: Exception) {
-                    _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.PLAYBACK)
-                    throw e
                 }
             }
             else -> {
-                // If we're not playing or paused, this is a no-op
+                // If we're not in preview state, this is a no-op
             }
         }
     }
     
     override suspend fun deleteRecording(audio: RecordedAudio): Boolean {
-        // First stop playback if this audio is playing
-        if ((state.value is VoiceRecorderState.Playing && 
-             (state.value as VoiceRecorderState.Playing).audio == audio) ||
-            (state.value is VoiceRecorderState.Paused && 
-             (state.value as VoiceRecorderState.Paused).audio == audio)) {
-            stopPlayback()
-        }
-        
         return try {
-            val result = platformRecorder.deletePlatformRecording(audio.filePath)
-            if (result && currentAudio == audio) {
-                currentAudio = null
+            // First stop playback if this audio is playing
+            if (state.value is VoiceRecorderState.Preview && 
+                (state.value as VoiceRecorderState.Preview).audio == audio) {
+                stopPlayback()
+            }
+            
+            val result = platformAudioFileManager.deleteRecording(audio.filePath)
+            if (result) {
                 _state.value = VoiceRecorderState.Idle
             }
             result
         } catch (e: Exception) {
-            _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.OTHER)
+            _state.value = VoiceRecorderState.Error(e, VoiceRecorderState.ErrorSource.FILE_OPERATION)
             false
         }
     }
 
     override fun release() {
-        playbackJob?.cancel()
+        updateJob?.cancel()
+        scope.cancel() // Cancel all coroutines
         platformRecorder.release()
     }
     
     private fun startPositionTracking(audio: RecordedAudio) {
-        playbackJob?.cancel()
-        playbackJob = CoroutineScope(Dispatchers.Default).launch {
+        updateJob?.cancel()
+        updateJob = scope.launch {
             while (isActive) {
                 try {
                     val position = platformRecorder.getCurrentPlaybackPositionMs()
-                    _state.value = VoiceRecorderState.Playing(audio, position)
+                    _state.value = (state.value as? VoiceRecorderState.Preview)?.copy(
+                        currentPositionMs = position
+                    ) ?: break
                     delay(100) // Update position every 100ms
                 } catch (e: Exception) {
                     // If there's an error getting position, we'll just stop updating
@@ -226,21 +220,26 @@ class VoiceRecorderImpl(
     }
     
     private fun handlePlaybackCompleted() {
-        playbackJob?.cancel()
-        currentAudio?.let {
-            _state.value = VoiceRecorderState.Completed(it)
-        } ?: run {
-            _state.value = VoiceRecorderState.Idle
+        updateJob?.cancel()
+        (state.value as? VoiceRecorderState.Preview)?.let { currentState ->
+            _state.value = currentState.copy(
+                playing = false,
+                currentPositionMs = 0
+            )
         }
-    }
-
-    private fun generateOutputFilePath(): String {
-        val timestamp = getCurrentTimeMs()
-        val random = Random.nextInt(1000, 9999)
-        return "recording_${timestamp}_$random.m4a"
     }
 
     private fun getCurrentTimeMs(): Long {
         return Clock.System.now().toEpochMilliseconds()
+    }
+
+    private fun launchRepeatingUpdate(intervalMs: Long, block: suspend () -> Unit) {
+        updateJob?.cancel()
+        updateJob = scope.launch {
+            while (isActive) {
+                block()
+                delay(intervalMs)
+            }
+        }
     }
 }

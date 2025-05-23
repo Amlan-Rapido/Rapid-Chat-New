@@ -1,6 +1,6 @@
 package com.rapido.voice_recorder
 
-expect class PlatformVoiceRecorder() {
+expect class PlatformVoiceRecorder {
 
     // Recording
     suspend fun startPlatformRecording(outputFilePath: String)

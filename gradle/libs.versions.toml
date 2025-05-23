@@ -14,6 +14,7 @@ core = "1.6.1"
 kotlinxCoroutines = "1.8.1"
 jetbrainsComposeVersion = "1.6.11"
 androidxComposeCompiler = "1.5.14"
+koin = "3.5.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -46,6 +47,10 @@ compose-material-icons-extended = { module = "org.jetbrains.compose.material:mat
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "jetbrainsComposeVersion" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "jetbrainsComposeVersion" }
 
+# Koin
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
+koin-test = { module = "io.insert-koin:koin-test", version.ref = "koin" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
