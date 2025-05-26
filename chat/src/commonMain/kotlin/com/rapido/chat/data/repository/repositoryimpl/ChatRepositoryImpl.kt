@@ -39,11 +39,13 @@ class ChatRepositoryImpl(
         addWelcomeMessages()
     }
 
-    override fun getChatMessages(): Flow<List<ChatMessage>> = _messages.asStateFlow()
+    override val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
     
     override val voiceRecorderState: StateFlow<VoiceRecorderState> = voiceRecorderIntegration.state
     
-    override suspend fun sendTextMessage(content: String): ChatMessage {
+    override suspend fun sendTextMessage(content: String) {
+        if (content.isBlank()) return
+        
         val message = ChatMessage(
             id = generateRandomId(),
             sender = Sender.USER,
@@ -51,24 +53,39 @@ class ChatRepositoryImpl(
             type = MessageType.TEXT,
             content = content
         )
-        
         addMessage(message)
-        return message
     }
     
-    override suspend fun startVoiceMessage() {
+    override suspend fun deleteMessage(messageId: String) {
+        val message = _messages.value.find { it.id == messageId } ?: return
+        
+        // If it's a voice message, delete the audio file
+        if (message.type == MessageType.VOICE) {
+            audioRecordings[messageId]?.let { audio ->
+                voiceRecorderIntegration.deleteRecording(audio)
+                audioRecordings.remove(messageId)
+            }
+        }
+        
+        _messages.value = _messages.value.filter { it.id != messageId }
+    }
+    
+    override suspend fun startVoiceRecording() {
         voiceRecorderIntegration.startRecording()
     }
     
-    override suspend fun deleteVoiceMessage() {
+    override suspend fun finishVoiceRecording() {
+        currentRecording = voiceRecorderIntegration.finishAndSendRecording()
+    }
+    
+    override suspend fun deleteCurrentVoiceRecording() {
         voiceRecorderIntegration.deleteRecording()
         currentRecording = null
     }
     
     override suspend fun finishAndSendVoiceMessage(): ChatMessage? {
         return try {
-            val recordedAudio = voiceRecorderIntegration.finishAndSendRecording()
-            currentRecording = recordedAudio
+            val recordedAudio = currentRecording ?: voiceRecorderIntegration.finishAndSendRecording()
             
             val message = ChatMessage(
                 id = generateRandomId(),
@@ -82,9 +99,10 @@ class ChatRepositoryImpl(
             
             audioRecordings[message.id] = recordedAudio
             addMessage(message)
+            currentRecording = null
             message
         } catch (e: Exception) {
-            platformLogD("ChatRepository","Exception ${e.message} occured during finishAndSendVoiceMessage from ChatRepository")
+            platformLogD("ChatRepository", "Exception ${e.message} occurred during finishAndSendVoiceMessage")
             null
         }
     }
@@ -95,46 +113,28 @@ class ChatRepositoryImpl(
         }
     }
     
-    override suspend fun pauseVoiceMessage(messageId: String) {
-        if (audioRecordings.containsKey(messageId)) {
-            voiceRecorderIntegration.pausePlayback()
-        }
+    override suspend fun playVoiceRecording(audio: RecordedAudio) {
+        voiceRecorderIntegration.playRecording(audio)
     }
     
-    override suspend fun resumeVoiceMessage(messageId: String) {
-        if (audioRecordings.containsKey(messageId)) {
-            voiceRecorderIntegration.resumePlayback()
-        }
+    override suspend fun pauseVoicePlayback() {
+        voiceRecorderIntegration.pausePlayback()
     }
     
-    override suspend fun stopVoiceMessage(messageId: String) {
-        if (audioRecordings.containsKey(messageId)) {
-            voiceRecorderIntegration.stopPlayback()
-        }
+    override suspend fun resumeVoicePlayback() {
+        voiceRecorderIntegration.resumePlayback()
     }
     
-    override suspend fun deleteMessage(messageId: String): Boolean {
-        val currentMessages = _messages.value
-        val messageToDelete = currentMessages.find { it.id == messageId } ?: return false
-        
-        // If it's a voice message, delete the audio file
-        if (messageToDelete.type == MessageType.VOICE) {
-            audioRecordings[messageId]?.let { audio ->
-                voiceRecorderIntegration.deleteRecording(audio)
-                audioRecordings.remove(messageId)
-            }
-        }
-        
-        _messages.value = currentMessages.filter { it.id != messageId }
-        return true
+    override suspend fun stopVoicePlayback() {
+        voiceRecorderIntegration.stopPlayback()
     }
     
     private fun addMessage(message: ChatMessage) {
-        _messages.value += message
+        _messages.value = _messages.value + message
     }
 
     private fun generateRandomId(): String {
-        return Random.nextInt(100000, 999999).toString()
+        return kotlin.random.Random.nextInt(100000, 999999).toString()
     }
     
     private fun addWelcomeMessages() {

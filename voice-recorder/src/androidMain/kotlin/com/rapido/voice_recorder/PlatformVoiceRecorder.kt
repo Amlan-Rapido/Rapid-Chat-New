@@ -45,6 +45,7 @@ actual class PlatformVoiceRecorder {
             } catch (e: Exception) {
                 mediaRecorder?.release()
                 mediaRecorder = null
+                currentOutputFilePath = null
                 throw e
             }
         }
@@ -62,21 +63,49 @@ actual class PlatformVoiceRecorder {
             mediaRecorder = null
 
             val file = File(filePath)
-
             currentOutputFilePath = null
+
             RecordedAudio(filePath, durationMs, file.length())
         } catch (e: Exception) {
             mediaRecorder?.release()
             mediaRecorder = null
+            currentOutputFilePath = null
             throw e
         }
     }
 
+    actual fun getCurrentRecordingFilePath(): String? = currentOutputFilePath
+
     actual suspend fun deletePlatformRecording(filePath: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            stopPlatformPlayback()
-            platformAudioFileManager.deleteRecording(filePath)
-        } catch (_: Exception) {
+            // Stop playback if this file is playing
+            if (mediaPlayer != null) {
+                stopPlatformPlayback()
+            }
+
+            // Stop recording if this is the current recording
+            if (filePath == currentOutputFilePath) {
+                mediaRecorder?.apply {
+                    try {
+                        stop()
+                    } catch (e: Exception) {
+                        // Ignore stop errors
+                    }
+                    release()
+                }
+                mediaRecorder = null
+                currentOutputFilePath = null
+            }
+
+            // Delete the file
+            val file = File(filePath)
+            if (file.exists() && file.isFile) {
+                file.delete()
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.e("VoiceRecorder", "Error deleting recording: ${e.message}")
             false
         }
     }

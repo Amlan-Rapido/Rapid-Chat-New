@@ -1,8 +1,5 @@
 package com.rapido.rapid_chat_new
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -11,41 +8,31 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
-import androidx.core.content.ContextCompat
-import com.rapido.chat.data.VoiceRecorderIntegrationImpl
-import com.rapido.chat.data.repository.repositoryimpl.ChatRepositoryImpl
-import com.rapido.chat.integration.screens.ChatScreen
-import com.rapido.chat.integration.viewmodel.ChatViewModelFactory
-import com.rapido.rapid_chat_new.ui.theme.RapidChatNewTheme
-import com.rapido.voice_recorder.PlatformVoiceRecorder
-import com.rapido.voice_recorder.PlatformContextProvider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import com.rapido.chat.integration.screens.ChatScreen
+import com.rapido.rapid_chat_new.presentation.AndroidChatViewModel
+import com.rapido.rapid_chat_new.ui.theme.RapidChatNewTheme
+import com.rapido.rapid_chat_new.utils.PermissionManager
+import com.rapido.voice_recorder.VoiceRecorderState
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 private const val TAG = "MainActivity"
 
 class MainActivity : ComponentActivity() {
     
-    private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_MEDIA_AUDIO)
-    } else {
-        arrayOf(
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        )
-    }
+    private val chatViewModel: AndroidChatViewModel by viewModel()
+    private val permissionManager: PermissionManager by inject()
     
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissionsMap ->
         val allGranted = permissionsMap.entries.all { it.value }
         
-        // Log permissions status for debugging
         Log.d(TAG, "Permissions result: $permissionsMap")
         
         if (!allGranted) {
@@ -66,95 +53,45 @@ class MainActivity : ComponentActivity() {
         
         Log.d(TAG, "Starting RapidChat application")
         
-        // Initialize the platform context provider for voice recorder
-        try {
-            PlatformContextProvider.initialize(this)
-            Log.d(TAG, "PlatformContextProvider initialized successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing PlatformContextProvider", e)
+        // Request permissions immediately
+        if (!permissionManager.areRecordingPermissionsGranted()) {
+            Log.d(TAG, "Requesting recording permissions at startup")
+            requestRecordingPermissions()
+        } else {
+            Log.d(TAG, "Recording permissions already granted")
         }
-        
-        // Request permissions
-        checkAndRequestPermissions()
         
         setContent {
             RapidChatNewTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-
-                        // Create voice recorder integration
-                        val voiceRecorder = remember {
-                            Log.d(TAG, "Creating platform voice recorder")
-                            // Create the platform voice recorder
-                            val platformVoiceRecorder = PlatformVoiceRecorder()
-                            // Create the voice recorder implementation
-                            com.rapido.voice_recorder.VoiceRecorderImpl(platformVoiceRecorder)
+                    // Monitor voice recorder state changes
+                    val voiceRecorderState by chatViewModel.voiceRecorderState.collectAsState()
+                    
+                    // Handle voice recorder errors
+                    when (val state = voiceRecorderState) {
+                        is VoiceRecorderState.Error -> {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Recording error: ${state.exception.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
-                        
-                        // Create voice recorder integration for chat module
-                        val voiceRecorderIntegration = remember {
-                            Log.d(TAG, "Creating voice recorder integration")
-                            VoiceRecorderIntegrationImpl(voiceRecorder)
-                        }
-                        
-                        // Create chat repository
-                        val chatRepository = remember {
-                            Log.d(TAG, "Creating chat repository")
-                            ChatRepositoryImpl(voiceRecorderIntegration)
-                        }
-                        
-                        // Create chat view model
-                        val viewModelFactory = remember {
-                            ChatViewModelFactory(chatRepository)
-                        }
-                        
-                        val viewModel = remember {
-                            viewModelFactory.create()
-                        }
-                        
-                        // Request permissions again when the screen is first displayed
-                        LaunchedEffect(Unit) {
-                            Log.d(TAG, "LaunchedEffect: Checking permissions")
-                            checkAndRequestPermissions()
-                        }
-                        
-                        // Release resources when the activity is destroyed
-                        DisposableEffect(Unit) {
-                            onDispose {
-                                Log.d(TAG, "Disposing resources")
-                                voiceRecorderIntegration.release()
-                                viewModel.onCleared()
-                            }
-                        }
-                        
-                        // Set the chat screen as the content
-                        Log.d(TAG, "Setting up ChatScreen")
-                        ChatScreen(viewModel)
+                        else -> { /* Other states are handled in ChatScreen */ }
+                    }
+                    
+                    ChatScreen(chatViewModel)
                 }
             }
         }
     }
     
-    private fun checkAndRequestPermissions() {
-        val permissionsToRequest = requiredPermissions.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }.toTypedArray()
-        
-        // Log current permission status
-        requiredPermissions.forEach { permission ->
-            val isGranted = ContextCompat.checkSelfPermission(this, permission) == 
-                PackageManager.PERMISSION_GRANTED
-            Log.d(TAG, "Permission status for $permission: ${if (isGranted) "GRANTED" else "DENIED"}")
-        }
-        
+    private fun requestRecordingPermissions() {
+        val permissionsToRequest = permissionManager.getPermissionsToRequest()
         if (permissionsToRequest.isNotEmpty()) {
-            Log.d(TAG, "Requesting permissions: ${permissionsToRequest.joinToString()}")
             permissionLauncher.launch(permissionsToRequest)
-        } else {
-            Log.d(TAG, "All permissions already granted")
         }
     }
 }

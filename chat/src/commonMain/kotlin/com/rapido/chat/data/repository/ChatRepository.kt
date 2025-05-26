@@ -1,6 +1,7 @@
 package com.rapido.chat.data.repository
 
 import com.rapido.chat.data.model.ChatMessage
+import com.rapido.voice_recorder.RecordedAudio
 import com.rapido.voice_recorder.VoiceRecorderState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,25 +11,24 @@ import kotlinx.coroutines.flow.StateFlow
  * Provides methods to send and retrieve messages.
  */
 interface ChatRepository {
-    // Get chat messages
-    fun getChatMessages(): Flow<List<ChatMessage>>
+    val messages: StateFlow<List<ChatMessage>>
     
-    // Send text message
-    suspend fun sendTextMessage(content: String): ChatMessage
+    // Text message operations
+    suspend fun sendTextMessage(content: String)
+    suspend fun deleteMessage(messageId: String)
     
-    // Voice message operations
-    suspend fun startVoiceMessage()
-    suspend fun deleteVoiceMessage()
+    // Voice recording operations
+    suspend fun startVoiceRecording()
+    suspend fun finishVoiceRecording()
+    suspend fun deleteCurrentVoiceRecording()
     suspend fun finishAndSendVoiceMessage(): ChatMessage?
     
-    // Voice message playback
+    // Voice playback operations
     suspend fun playVoiceMessage(messageId: String)
-    suspend fun pauseVoiceMessage(messageId: String)
-    suspend fun resumeVoiceMessage(messageId: String)
-    suspend fun stopVoiceMessage(messageId: String)
-    
-    // Delete operations
-    suspend fun deleteMessage(messageId: String): Boolean
+    suspend fun playVoiceRecording(audio: RecordedAudio)
+    suspend fun pauseVoicePlayback()
+    suspend fun resumeVoicePlayback()
+    suspend fun stopVoicePlayback()
     
     // Get current voice recorder state
     val voiceRecorderState: StateFlow<VoiceRecorderState>

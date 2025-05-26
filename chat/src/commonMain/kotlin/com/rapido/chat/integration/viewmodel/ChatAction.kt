@@ -1,11 +1,13 @@
 package com.rapido.chat.integration.viewmodel
 
+import com.rapido.voice_recorder.RecordedAudio
+
 /**
  * Represents the different actions that can be performed in the chat UI.
  */
 sealed class ChatAction {
 
-    data class SendTextMessage(val content: String) : ChatAction()
+    data class SendTextMessage(val text: String) : ChatAction()
 
     data object StartVoiceMessage : ChatAction()
 
@@ -13,13 +15,18 @@ sealed class ChatAction {
 
     data object FinishVoiceMessage : ChatAction()
 
-    data class PlayVoiceMessage(val messageId: String) : ChatAction()
+    data object SendVoiceMessage : ChatAction()
 
-    data class PauseVoiceMessage(val messageId: String) : ChatAction()
+    sealed class PlayVoiceMessage : ChatAction() {
+        data class FromMessage(val messageId: String) : PlayVoiceMessage()
+        data class FromPreview(val audio: RecordedAudio) : PlayVoiceMessage()
+    }
 
-    data class ResumeVoiceMessage(val messageId: String) : ChatAction()
+    data object PauseVoiceMessage : ChatAction()
 
-    data class StopVoiceMessage(val messageId: String) : ChatAction()
+    data object ResumeVoiceMessage : ChatAction()
+
+    data object StopVoiceMessage : ChatAction()
 
     data class DeleteMessage(val messageId: String) : ChatAction()
 } 

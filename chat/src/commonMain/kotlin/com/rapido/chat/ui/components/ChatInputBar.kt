@@ -1,35 +1,17 @@
 package com.rapido.chat.ui.components
 
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 /**
@@ -42,6 +24,8 @@ import androidx.compose.ui.unit.dp
  * @param onVoiceRecordStart Callback when voice recording starts
  * @param onVoiceRecordEnd Callback when voice recording ends
  * @param onVoiceRecordDelete Callback when voice recording is deleted
+ * @param onVoiceMessageSend Callback when voice message is sent
+ * @param modifier Modifier for the input bar
  */
 @Composable
 fun ChatInputBar(
@@ -51,22 +35,14 @@ fun ChatInputBar(
     isRecording: Boolean,
     onVoiceRecordStart: () -> Unit,
     onVoiceRecordEnd: () -> Unit,
-    onVoiceRecordDelete: () -> Unit
+    onVoiceRecordDelete: () -> Unit,
+    onVoiceMessageSend: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
     
-    // Track if text field is focused to manage mic button visibility
-    var isTextFieldFocused by remember { mutableStateOf(false) }
-    
-    // When recording starts, clear focus from the text field
-    LaunchedEffect(isRecording) {
-        if (isRecording) {
-            focusManager.clearFocus()
-        }
-    }
-    
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(8.dp),
         color = MaterialTheme.colorScheme.background
@@ -84,69 +60,56 @@ fun ChatInputBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Text input field
-            OutlinedTextField(
-                value = text,
-                onValueChange = onTextChanged,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(vertical = 2.dp)
-                    .onFocusChanged { isTextFieldFocused = it.isFocused },
-                placeholder = { Text("Type a message") },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Send
-                ),
-                keyboardActions = KeyboardActions(
-                    onSend = { 
-                        if (text.isNotBlank()) {
-                            onSendClick()
-                            focusManager.clearFocus()
-                        }
-                    }
-                ),
-                maxLines = 1,
-                singleLine = true,
-                shape = RoundedCornerShape(24.dp),
-                minLines = 1,
-                enabled = !isRecording // Disable text field while recording
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            if (text.isNotBlank()) {
-                // Show send button when text is not empty
-                IconButton(
-                    onClick = {
-                        onSendClick()
-                        focusManager.clearFocus()
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send message",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            } else {
-                // Show mic button when text field is empty
-                MicButton(
-                    isRecording = isRecording,
-                    onLongPress = {
-                        // Start recording when long press begins
-                        focusManager.clearFocus() 
-                        onVoiceRecordStart()
-                    },
-                    onLongPressRelease = {
-                        // End recording when long press ends
-                        onVoiceRecordEnd()
-                    },
-                    onTap = {
-                        // Optional: Handle tap action
-                        if (isRecording) {
-                            onVoiceRecordDelete()
+            if (!isRecording) {
+                BasicTextField(
+                    value = text,
+                    onValueChange = onTextChanged,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    decorationBox = { innerTextField ->
+                        Box {
+                            if (text.isEmpty()) {
+                                Text(
+                                    text = "Type a message",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            innerTextField()
                         }
                     }
                 )
+            }
+
+            // Send or mic button
+            Box(
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                if (text.isNotBlank()) {
+                    // Show send button for text
+                    IconButton(
+                        onClick = onSendClick
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Send,
+                            contentDescription = "Send message",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } else {
+                    // Show mic button for voice recording
+                    MicButton(
+                        isRecording = isRecording,
+                        onLongPress = onVoiceRecordStart,
+                        onLongPressRelease = onVoiceRecordEnd,
+                        onTap = onVoiceRecordDelete
+                    )
+                }
             }
         }
     }

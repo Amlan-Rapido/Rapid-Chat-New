@@ -20,6 +20,9 @@ expect class PlatformVoiceRecorder {
 
     suspend fun deletePlatformRecording(filePath: String): Boolean
 
+    // Get the current recording file path
+    fun getCurrentRecordingFilePath(): String?
+
     // This function is a way to observe playback completion in KMP
     // equivalent to Android's MediaPlayer.setOnCompletionListener
     fun setOnPlaybackCompletedListener(listener: () -> Unit)

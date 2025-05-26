@@ -89,13 +89,16 @@ class VoiceRecorderImpl(
                 try {
                     updateJob?.cancel()
                     // Get the current file path before stopping
-                    val currentFilePath = (state.value as? VoiceRecorderState.Recording)?.let {
-                        platformVoiceRecorder.stopPlatformRecording().filePath
-                    }
+                    val currentFilePath = platformVoiceRecorder.getCurrentRecordingFilePath()
+                    
+                    // Stop recording first
+                    platformVoiceRecorder.stopPlatformRecording()
+                    
                     // Delete the file if we have it
                     currentFilePath?.let {
                         platformVoiceRecorder.deletePlatformRecording(it)
                     }
+                    
                     _state.value = VoiceRecorderState.Idle
                 } catch (e: Exception) {
                     val wrappedException = VoiceRecorderException.RecordingFailedException(cause = e)
@@ -103,7 +106,23 @@ class VoiceRecorderImpl(
                     throw wrappedException
                 }
             }
-            else -> throw VoiceRecorderException.InvalidStateException("Not recording")
+            is VoiceRecorderState.Preview -> {
+                try {
+                    val previewState = state.value as VoiceRecorderState.Preview
+                    // Stop playback if playing
+                    if (previewState.playing) {
+                        stopPlayback()
+                    }
+                    // Delete the audio file
+                    platformVoiceRecorder.deletePlatformRecording(previewState.audio.filePath)
+                    _state.value = VoiceRecorderState.Idle
+                } catch (e: Exception) {
+                    val wrappedException = VoiceRecorderException.FileOperationException(cause = e)
+                    _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.FILE_OPERATION)
+                    throw wrappedException
+                }
+            }
+            else -> throw VoiceRecorderException.InvalidStateException("Cannot delete recording in current state: ${state.value}")
         }
     }
     

@@ -126,10 +126,19 @@ actual class PlatformVoiceRecorder {
         )
     }
 
+    actual fun getCurrentRecordingFilePath(): String? = currentOutputFilePath
+
     actual suspend fun deletePlatformRecording(filePath: String): Boolean {
         // Stop playback if needed
         if (playerRef.value != null) {
             stopPlatformPlayback()
+        }
+        
+        // Stop recording if this is the current recording
+        if (filePath == currentOutputFilePath) {
+            recorderRef.value?.stop()
+            recorderRef.value = null
+            currentOutputFilePath = null
         }
         
         // Delete the file
@@ -139,6 +148,7 @@ actual class PlatformVoiceRecorder {
                 fileManager.removeItemAtPath(filePath, null)
                 true
             } catch (e: Exception) {
+                println("Error deleting file: ${e.message}")
                 false
             }
         } else {

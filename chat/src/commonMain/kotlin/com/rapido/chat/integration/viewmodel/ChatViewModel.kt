@@ -16,137 +16,89 @@ import kotlinx.coroutines.launch
 
 class ChatViewModel(
     private val chatRepository: ChatRepository
-) {
+) : ChatViewModelInterface {
 
     private val viewModelScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val _uiState = MutableStateFlow<ChatUiState>(ChatUiState.Loading)
-    val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
+    override val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
-    val voiceRecorderState: StateFlow<VoiceRecorderState> = chatRepository.voiceRecorderState
+    override val voiceRecorderState: StateFlow<VoiceRecorderState> = chatRepository.voiceRecorderState
     
     init {
-        observeChatMessages()
+        viewModelScope.launch {
+            chatRepository.messages
+                .onEach { messages ->
+                    _uiState.value = ChatUiState.Success(messages)
+                }
+                .catch { error ->
+                    _uiState.value = ChatUiState.Error(error.message ?: "Unknown error")
+                }
+                .launchIn(viewModelScope)
+        }
     }
 
-    fun handleAction(action: ChatAction) {
+    override fun handleAction(action: ChatAction) {
         when (action) {
-            is ChatAction.SendTextMessage -> sendTextMessage(action.content)
-            is ChatAction.StartVoiceMessage -> startVoiceMessage()
-            is ChatAction.DeleteVoiceMessage -> deleteVoiceMessage()
-            is ChatAction.FinishVoiceMessage -> finishVoiceMessage()
-            is ChatAction.PlayVoiceMessage -> playVoiceMessage(action.messageId)
-            is ChatAction.PauseVoiceMessage -> pauseVoiceMessage(action.messageId)
-            is ChatAction.ResumeVoiceMessage -> resumeVoiceMessage(action.messageId)
-            is ChatAction.StopVoiceMessage -> stopVoiceMessage(action.messageId)
-            is ChatAction.DeleteMessage -> deleteMessage(action.messageId)
-        }
-    }
-
-    private fun observeChatMessages() {
-        chatRepository.getChatMessages()
-            .onEach { messages ->
-                _uiState.value = ChatUiState.Success(messages)
+            is ChatAction.SendTextMessage -> {
+                viewModelScope.launch {
+                    chatRepository.sendTextMessage(action.text)
+                }
             }
-            .catch { error ->
-                _uiState.value = ChatUiState.Error(error.message ?: "Unknown error occurred")
+            is ChatAction.StartVoiceMessage -> {
+                viewModelScope.launch {
+                    chatRepository.startVoiceRecording()
+                }
             }
-            .launchIn(viewModelScope)
-    }
-
-    private fun sendTextMessage(content: String) {
-        if (content.isBlank()) return
-        
-        viewModelScope.launch {
-            try {
-                chatRepository.sendTextMessage(content)
-            } catch (e: Exception) {
-                _uiState.value = ChatUiState.Error("Failed to send message: ${e.message}")
+            is ChatAction.FinishVoiceMessage -> {
+                viewModelScope.launch {
+                    chatRepository.finishVoiceRecording()
+                }
             }
-        }
-    }
-
-    private fun startVoiceMessage() {
-        viewModelScope.launch {
-            try {
-                chatRepository.startVoiceMessage()
-            } catch (e: Exception) {
-                _uiState.value = ChatUiState.Error("Failed to start recording: ${e.message}")
+            is ChatAction.DeleteVoiceMessage -> {
+                viewModelScope.launch {
+                    chatRepository.deleteCurrentVoiceRecording()
+                }
             }
-        }
-    }
-
-    private fun deleteVoiceMessage() {
-        viewModelScope.launch {
-            try {
-                chatRepository.deleteVoiceMessage()
-            } catch (e: Exception) {
-                _uiState.value = ChatUiState.Error("Failed to cancel recording: ${e.message}")
+            is ChatAction.SendVoiceMessage -> {
+                viewModelScope.launch {
+                    chatRepository.finishAndSendVoiceMessage()
+                }
             }
-        }
-    }
-
-    private fun finishVoiceMessage() {
-        viewModelScope.launch {
-            try {
-                chatRepository.finishAndSendVoiceMessage()
-            } catch (e: Exception) {
-                _uiState.value = ChatUiState.Error("Failed to send voice message: ${e.message}")
+            is ChatAction.PlayVoiceMessage.FromMessage -> {
+                viewModelScope.launch {
+                    chatRepository.playVoiceMessage(action.messageId)
+                }
+            }
+            is ChatAction.PlayVoiceMessage.FromPreview -> {
+                viewModelScope.launch {
+                    chatRepository.playVoiceRecording(action.audio)
+                }
+            }
+            is ChatAction.PauseVoiceMessage -> {
+                viewModelScope.launch {
+                    chatRepository.pauseVoicePlayback()
+                }
+            }
+            is ChatAction.ResumeVoiceMessage -> {
+                viewModelScope.launch {
+                    chatRepository.resumeVoicePlayback()
+                }
+            }
+            is ChatAction.StopVoiceMessage -> {
+                viewModelScope.launch {
+                    chatRepository.stopVoicePlayback()
+                }
+            }
+            is ChatAction.DeleteMessage -> {
+                viewModelScope.launch {
+                    chatRepository.deleteMessage(action.messageId)
+                }
             }
         }
     }
 
-    private fun playVoiceMessage(messageId: String) {
-        viewModelScope.launch {
-            try {
-                chatRepository.playVoiceMessage(messageId)
-            } catch (e: Exception) {
-                _uiState.value = ChatUiState.Error("Failed to play voice message: ${e.message}")
-            }
-        }
-    }
-
-    private fun pauseVoiceMessage(messageId: String) {
-        viewModelScope.launch {
-            try {
-                chatRepository.pauseVoiceMessage(messageId)
-            } catch (e: Exception) {
-                _uiState.value = ChatUiState.Error("Failed to pause voice message: ${e.message}")
-            }
-        }
-    }
-
-    private fun resumeVoiceMessage(messageId: String) {
-        viewModelScope.launch {
-            try {
-                chatRepository.resumeVoiceMessage(messageId)
-            } catch (e: Exception) {
-                _uiState.value = ChatUiState.Error("Failed to resume voice message: ${e.message}")
-            }
-        }
-    }
-
-    private fun stopVoiceMessage(messageId: String) {
-        viewModelScope.launch {
-            try {
-                chatRepository.stopVoiceMessage(messageId)
-            } catch (e: Exception) {
-                _uiState.value = ChatUiState.Error("Failed to stop voice message: ${e.message}")
-            }
-        }
-    }
-
-    private fun deleteMessage(messageId: String) {
-        viewModelScope.launch {
-            try {
-                chatRepository.deleteMessage(messageId)
-            } catch (e: Exception) {
-                _uiState.value = ChatUiState.Error("Failed to delete message: ${e.message}")
-            }
-        }
-    }
-
-    fun onCleared() {
+    override fun onCleared() {
         viewModelScope.cancel()
     }
 } 
