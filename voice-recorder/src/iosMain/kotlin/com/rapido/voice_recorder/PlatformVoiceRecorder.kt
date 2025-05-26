@@ -10,24 +10,21 @@ import platform.Foundation.date
 import platform.Foundation.timeIntervalSince1970
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import platform.AVFAudio.AVAudioQualityHigh
 import platform.AVFAudio.AVAudioRecorder
 import platform.AVFAudio.AVAudioSession
 import platform.AVFAudio.AVEncoderAudioQualityKey
-import platform.Foundation.NSError
-import platform.Foundation.NSFileManager
-import platform.Foundation.NSURL
-import kotlinx.cinterop.alloc
-import kotlinx.cinterop.value
+import platform.Foundation.*
 import platform.AVFAudio.AVAudioPlayer
 import platform.AVFAudio.AVAudioPlayerDelegateProtocol
 import platform.darwin.NSObject
 
 @OptIn(ExperimentalForeignApi::class)
 actual class PlatformVoiceRecorder {
-    // Use atomic reference to handle potential threading issues
+    private val platformAudioFileManager = PlatformAudioFileManager()
     private val recorderRef = kotlin.concurrent.AtomicReference<AVAudioRecorder?>(null)
     private val playerRef = kotlin.concurrent.AtomicReference<AVAudioPlayer?>(null)
     private var currentOutputFilePath: String? = null
@@ -37,6 +34,7 @@ actual class PlatformVoiceRecorder {
     // Create a delegate for handling audio player events
     private val playerDelegate = object : NSObject(), AVAudioPlayerDelegateProtocol {
         override fun audioPlayerDidFinishPlaying(player: AVAudioPlayer, successfully: Boolean) {
+            debugLog("Playback completed, success: $successfully")
             onPlaybackCompletedListener?.invoke()
         }
     }
@@ -49,11 +47,7 @@ actual class PlatformVoiceRecorder {
             audioSession.setActive(true, null)
 
             // Create a file URL for the recording
-            val fileManager = NSFileManager.defaultManager
-
-            // Ensure the directory exists
-            val directory = NSURL.fileURLWithPath(getDocumentsDirectory())
-            val recordingURL = directory.URLByAppendingPathComponent(outputFilePath.split("/").last())
+            val recordingURL = NSURL.fileURLWithPath(outputFilePath)
                 ?: throw Exception("Could not create URL for recording")
 
             // Create recording settings
@@ -74,8 +68,8 @@ actual class PlatformVoiceRecorder {
                     error = error.ptr
                 )
 
-                if (error.value != null) {
-                    throw Exception("Failed to initialize recorder: ${error.value?.localizedDescription}")
+                if (recorder == null) {
+                    throw Exception("Failed to initialize recorder")
                 }
 
                 if (recorder != null) {
@@ -83,7 +77,7 @@ actual class PlatformVoiceRecorder {
                     if (recorder.record()) {
                         // Recording started successfully
                         recorderRef.value = recorder
-                        currentOutputFilePath = recordingURL.path
+                        currentOutputFilePath = outputFilePath
                         recordingStartTimeMs = getCurrentTimeMs()
                     } else {
                         throw Exception("Failed to start recording")
@@ -141,60 +135,66 @@ actual class PlatformVoiceRecorder {
             currentOutputFilePath = null
         }
         
-        // Delete the file
-        val fileManager = NSFileManager.defaultManager
-        return if (fileManager.fileExistsAtPath(filePath)) {
-            try {
-                fileManager.removeItemAtPath(filePath, null)
-                true
-            } catch (e: Exception) {
-                println("Error deleting file: ${e.message}")
-                false
-            }
-        } else {
-            false
-        }
+        return platformAudioFileManager.deleteRecording(filePath)
     }
     
     // Playback methods
     @OptIn(BetaInteropApi::class)
     actual suspend fun startPlatformPlayback(filePath: String) {
         try {
+            debugLog("Starting playback of file: $filePath")
+            
             // Stop any existing playback
             stopPlatformPlayback()
             
             // Set up audio session for playback
             val audioSession = AVAudioSession.sharedInstance()
+            debugLog("Configuring audio session")
             audioSession.setCategory(platform.AVFAudio.AVAudioSessionCategoryPlayback, null)
             audioSession.setActive(true, null)
             
             // Create URL for the audio file
             val fileURL = NSURL.fileURLWithPath(filePath)
+            if (!NSFileManager.defaultManager.fileExistsAtPath(filePath)) {
+                debugLog("Audio file not found at path: $filePath")
+                throw Exception("Audio file not found at path: $filePath")
+            }
+            debugLog("Audio file exists at path: $filePath")
             
             // Create and configure the player
             memScoped {
                 val error = alloc<ObjCObjectVar<NSError?>>()
                 
+                debugLog("Creating AVAudioPlayer")
                 val player = AVAudioPlayer(contentsOfURL = fileURL, error = error.ptr)
                 
-                if (error.value != null) {
-                    throw Exception("Failed to initialize player: ${error.value?.localizedDescription}")
+                if (player == null) {
+                    val errorObj = error.value
+                    val errorMsg = "Failed to initialize player: ${errorObj?.localizedDescription ?: "Unknown error"}"
+                    debugLog(errorMsg)
+                    throw Exception(errorMsg)
                 }
                 
-                if (player != null) {
-                    player.delegate = playerDelegate
-                    player.prepareToPlay()
-                    if (player.play()) {
-                        // Playback started successfully
-                        playerRef.value = player
-                    } else {
-                        throw Exception("Failed to start playback")
-                    }
-                } else {
-                    throw Exception("Failed to create AVAudioPlayer")
+                debugLog("Configuring player")
+                player.delegate = playerDelegate
+                player.volume = 1.0
+                if (!player.prepareToPlay()) {
+                    debugLog("Failed to prepare player")
+                    throw Exception("Failed to prepare player")
                 }
+                debugLog("Player prepared successfully")
+                
+                if (!player.play()) {
+                    debugLog("Failed to start playback")
+                    throw Exception("Failed to start playback")
+                }
+                
+                // Playback started successfully
+                debugLog("Playback started successfully")
+                playerRef.value = player
             }
         } catch (e: Exception) {
+            debugLog("Error during playback: ${e.message}")
             playerRef.value = null
             throw e
         }
@@ -211,8 +211,12 @@ actual class PlatformVoiceRecorder {
     }
     
     actual suspend fun stopPlatformPlayback() {
-        val player = playerRef.value ?: return
-        player.stop()
+        debugLog("Stopping playback")
+        val player = playerRef.value
+        if (player != null) {
+            player.stop()
+            debugLog("Playback stopped")
+        }
         playerRef.value = null
     }
     
@@ -236,10 +240,7 @@ actual class PlatformVoiceRecorder {
 
         // Clean up any partial recordings
         if (currentOutputFilePath != null) {
-            val fileManager = NSFileManager.defaultManager
-            if (fileManager.fileExistsAtPath(currentOutputFilePath!!)) {
-                fileManager.removeItemAtPath(currentOutputFilePath!!, null)
-            }
+            platformAudioFileManager.deleteRecording(currentOutputFilePath!!)
             currentOutputFilePath = null
         }
 
@@ -251,15 +252,11 @@ actual class PlatformVoiceRecorder {
         }
     }
 
-    private fun getDocumentsDirectory(): String {
-        val paths = NSFileManager.defaultManager.URLsForDirectory(
-            directory = platform.Foundation.NSDocumentDirectory,
-            inDomains = platform.Foundation.NSUserDomainMask
-        )
-        return (paths.firstOrNull() as? NSURL)?.path ?: ""
+    private fun getCurrentTimeMs(): Long {
+        return (NSDate.date().timeIntervalSince1970 * 1000).toLong()
     }
 
-    private fun getCurrentTimeMs(): Long {
-        return (platform.Foundation.NSDate.date().timeIntervalSince1970 * 1000).toLong()
+    private fun debugLog(message: String) {
+        println("[PlatformVoiceRecorder-iOS] $message")
     }
 }

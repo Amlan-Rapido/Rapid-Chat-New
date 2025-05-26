@@ -22,9 +22,6 @@ import androidx.compose.ui.unit.dp
  * @param onSendClick Callback when the send button is clicked
  * @param isRecording Whether voice recording is in progress
  * @param onVoiceRecordStart Callback when voice recording starts
- * @param onVoiceRecordEnd Callback when voice recording ends
- * @param onVoiceRecordDelete Callback when voice recording is deleted
- * @param onVoiceMessageSend Callback when voice message is sent
  * @param modifier Modifier for the input bar
  */
 @Composable
@@ -34,9 +31,6 @@ fun ChatInputBar(
     onSendClick: () -> Unit,
     isRecording: Boolean,
     onVoiceRecordStart: () -> Unit,
-    onVoiceRecordEnd: () -> Unit,
-    onVoiceRecordDelete: () -> Unit,
-    onVoiceMessageSend: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
@@ -105,9 +99,7 @@ fun ChatInputBar(
                     // Show mic button for voice recording
                     MicButton(
                         isRecording = isRecording,
-                        onLongPress = onVoiceRecordStart,
-                        onLongPressRelease = onVoiceRecordEnd,
-                        onTap = onVoiceRecordDelete
+                        onTap = onVoiceRecordStart
                     )
                 }
             }

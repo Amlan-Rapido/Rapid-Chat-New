@@ -10,4 +10,8 @@ object PlatformContextProvider {
     fun initialize(context: Context) {
         appContext = context.applicationContext
     }
+    
+    fun isInitialized(): Boolean {
+        return ::appContext.isInitialized
+    }
 }

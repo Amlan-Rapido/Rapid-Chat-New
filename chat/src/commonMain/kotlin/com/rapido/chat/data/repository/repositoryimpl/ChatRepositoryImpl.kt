@@ -155,7 +155,7 @@ class ChatRepositoryImpl(
             sender = Sender.SYSTEM,
             timestamp = currentTime,
             type = MessageType.TEXT,
-            content = "Try recording a voice message by long-pressing the microphone button."
+            content = "Try recording a voice message by tapping the microphone button. Tap the stop button when you're done recording."
         )
         
         // Add both messages

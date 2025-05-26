@@ -1,15 +1,20 @@
 package com.rapido.chat.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,6 +30,7 @@ import com.rapido.chat.ui.utils.formatDuration
  * @param isRecording Whether currently recording or in preview mode
  * @param isPlaying Whether the recording is currently playing
  * @param progress Current playback progress (0f to 1f)
+ * @param onStopRecording Callback when stop recording button is clicked
  * @param onPlayPauseClick Callback when play/pause button is clicked
  * @param onDeleteClick Callback when delete button is clicked
  * @param onSendClick Callback when send button is clicked
@@ -35,119 +41,102 @@ fun VoiceRecordingIndicator(
     isRecording: Boolean,
     isPlaying: Boolean = false,
     progress: Float = 0f,
+    onStopRecording: () -> Unit = {},
     onPlayPauseClick: () -> Unit = {},
-    onDeleteClick: () -> Unit,
+    onDeleteClick: () -> Unit = {},
     onSendClick: () -> Unit = {}
 ) {
-    Box(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .padding(horizontal = 8.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.errorContainer)
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.CenterStart
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .padding(8.dp)
+                .height(48.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Recording status or playback controls
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+            // Delete button
+            IconButton(
+                onClick = onDeleteClick,
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
+                )
             ) {
-                if (isRecording) {
-                    // Recording indicator
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.error),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Mic,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onError,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    Text(
-                        text = "Recording...",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                } else {
-                    // Playback controls
-                    IconButton(
-                        onClick = onPlayPauseClick,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
-                            tint = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    // Progress bar
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Delete recording"
+                )
+            }
+
+            // Duration and progress
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = formatDuration(durationMs),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                if (!isRecording) {
                     LinearProgressIndicator(
+                        progress = progress,
                         modifier = Modifier
-                            .weight(1f)
-                            .height(4.dp),
-                        progress = { progress },
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        trackColor = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.3f)
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 }
             }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Duration
-            Text(
-                text = formatDuration(durationMs),
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // Action buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Delete button
-                IconButton(
-                    onClick = onDeleteClick,
-                    modifier = Modifier.size(32.dp)
+
+            // Show stop button when recording
+            if (isRecording) {
+                FilledIconButton(
+                    onClick = onStopRecording,
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Clear,
-                        contentDescription = "Delete recording",
-                        tint = MaterialTheme.colorScheme.onErrorContainer
+                        imageVector = Icons.Default.Stop,
+                        contentDescription = "Stop recording"
                     )
                 }
-                
-                // Send button (only shown when not recording)
-                if (!isRecording) {
-                    IconButton(
+            } else {
+                // Play/Pause button
+                IconButton(
+                    onClick = onPlayPauseClick
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause playback" else "Play recording"
+                    )
+                }
+
+                // Send button with animation
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    FilledIconButton(
                         onClick = onSendClick,
-                        modifier = Modifier.size(32.dp)
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Send,
-                            contentDescription = "Send recording",
-                            tint = MaterialTheme.colorScheme.onErrorContainer
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "Send recording"
                         )
                     }
                 }

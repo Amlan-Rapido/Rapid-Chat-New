@@ -32,9 +32,12 @@ actual class PlatformAudioFileManager {
         val path = recordingsURL.path
             ?: throw IllegalStateException("Could not convert recordings URL to path string.")
 
-        if (!fileManager.fileExistsAtPath(path)) {
-            memScoped {
-                val errorPtr = alloc<ObjCObjectVar<NSError?>>()
+        memScoped {
+            val errorPtr = alloc<ObjCObjectVar<NSError?>>()
+            
+            // Check if directory exists
+            if (!fileManager.fileExistsAtPath(path)) {
+                // Create directory if it doesn't exist
                 val success = fileManager.createDirectoryAtPath(
                     path = path,
                     withIntermediateDirectories = true,
@@ -44,6 +47,12 @@ actual class PlatformAudioFileManager {
                 if (!success) {
                     val error = errorPtr.value
                     throw IllegalStateException("Failed to create recordings directory at $path. Error: ${error?.localizedDescription ?: "Unknown error"}")
+                }
+            } else {
+                // Verify it's a directory
+                var isDirectory: ObjCObjectVar<Boolean> = alloc()
+                if (!fileManager.fileExistsAtPath(path, isDirectory = isDirectory.ptr) || !isDirectory.value) {
+                    throw IllegalStateException("Path exists but is not a directory: $path")
                 }
             }
         }

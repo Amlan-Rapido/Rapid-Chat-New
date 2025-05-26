@@ -33,6 +33,24 @@ fun ChatScreen(
     val playbackProgress = if (previewState != null && previewState.audio.durationMs > 0) {
         previewState.currentPositionMs.toFloat() / previewState.audio.durationMs.toFloat()
     } else 0f
+
+    // Track currently playing message
+    var currentlyPlayingMessageId by remember { mutableStateOf<String?>(null) }
+
+    // Update currently playing message when voice recorder state changes
+    LaunchedEffect(voiceRecorderState) {
+        when (voiceRecorderState) {
+            is VoiceRecorderState.Preview -> {
+                if (!(voiceRecorderState as VoiceRecorderState.Preview).playing) {
+                    currentlyPlayingMessageId = null
+                }
+            }
+            is VoiceRecorderState.Idle -> {
+                currentlyPlayingMessageId = null
+            }
+            else -> {}
+        }
+    }
     
     // Log voice recorder state changes
     LaunchedEffect(voiceRecorderState) {
@@ -78,6 +96,10 @@ fun ChatScreen(
                         isRecording = isRecording,
                         isPlaying = isPlaying,
                         progress = playbackProgress,
+                        onStopRecording = {
+                            platformLogD(tag, "Stopping voice recording")
+                            viewModel.handleAction(ChatAction.FinishVoiceMessage)
+                        },
                         onPlayPauseClick = {
                             if (isPlaying) {
                                 viewModel.handleAction(ChatAction.PauseVoiceMessage)
@@ -92,6 +114,8 @@ fun ChatScreen(
                         },
                         onSendClick = {
                             viewModel.handleAction(ChatAction.SendVoiceMessage)
+                            // Clear preview state after sending
+                            viewModel.handleAction(ChatAction.StopVoiceMessage)
                         }
                     )
                 }
@@ -115,14 +139,6 @@ fun ChatScreen(
                     onVoiceRecordStart = {
                         platformLogD(tag, "Starting voice recording")
                         viewModel.handleAction(ChatAction.StartVoiceMessage)
-                    },
-                    onVoiceRecordEnd = {
-                        platformLogD(tag, "Finishing voice recording")
-                        viewModel.handleAction(ChatAction.FinishVoiceMessage)
-                    },
-                    onVoiceRecordDelete = {
-                        platformLogD(tag, "Deleting voice recording")
-                        viewModel.handleAction(ChatAction.DeleteVoiceMessage)
                     }
                 )
             }
@@ -136,8 +152,18 @@ fun ChatScreen(
                         .fillMaxSize()
                         .padding(paddingValues),
                     onVoiceMessageClick = { messageId ->
-                        viewModel.handleAction(ChatAction.PlayVoiceMessage.FromMessage(messageId))
-                    }
+                        if (currentlyPlayingMessageId == messageId) {
+                            // If clicking the same message that's playing, pause it
+                            viewModel.handleAction(ChatAction.PauseVoiceMessage)
+                            currentlyPlayingMessageId = null
+                        } else {
+                            // Start playing the clicked message
+                            currentlyPlayingMessageId = messageId
+                            viewModel.handleAction(ChatAction.PlayVoiceMessage.FromMessage(messageId))
+                        }
+                    },
+                    voiceRecorderState = voiceRecorderState,
+                    currentlyPlayingMessageId = currentlyPlayingMessageId
                 )
             }
             is ChatUiState.Error -> {
