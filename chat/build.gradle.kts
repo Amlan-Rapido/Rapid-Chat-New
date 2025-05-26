@@ -14,6 +14,14 @@ kotlin {
     iosSimulatorArm64 {
         binaries.framework {
             baseName = "chatKit"
+            isStatic = true
+            // Export dependencies that are used in public API
+            export(libs.koin.core)
+            export(libs.koin.compose)
+            export(libs.compose.runtime)
+            export(libs.compose.foundation)
+            export(libs.compose.material3)
+            export(libs.compose.components.resources)
         }
     }
 
@@ -25,14 +33,16 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
 
                 // JetBrains Compose Multiplatform dependencies
-                api(compose.runtime)
-                api(compose.foundation)
-                api(compose.ui)
-                api(compose.material3)
+                api(libs.compose.runtime)
+                api(libs.compose.foundation)
+                api(libs.compose.ui)
+                api(libs.compose.material3)
                 implementation(libs.compose.material.icons.extended)
+                implementation(libs.koin.core)
+                implementation(libs.koin.compose)
 
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
-                api(compose.components.resources)
+                api(libs.compose.components.resources)
             }
         }
 
@@ -51,14 +61,21 @@ kotlin {
         }
 
         val iosSimulatorArm64Main by getting
-
         val iosMain by creating {
             dependsOn(commonMain)
             iosSimulatorArm64Main.dependsOn(this)
+            dependencies {
+                implementation(libs.compose.runtime)
+                implementation(libs.compose.foundation)
+                implementation(libs.compose.material3)
+                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+                implementation(libs.compose.components.resources)
+                api(libs.koin.core)
+                api(libs.koin.compose)
+            }
         }
 
         val iosSimulatorArm64Test by getting
-
         val iosTest by creating {
             dependsOn(commonTest)
             iosSimulatorArm64Test.dependsOn(this)

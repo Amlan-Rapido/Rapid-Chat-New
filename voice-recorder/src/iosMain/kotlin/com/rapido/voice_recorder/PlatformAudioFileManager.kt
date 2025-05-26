@@ -3,6 +3,7 @@ package com.rapido.voice_recorder
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.BooleanVar
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
@@ -46,11 +47,11 @@ actual class PlatformAudioFileManager {
                 )
                 if (!success) {
                     val error = errorPtr.value
-                    throw IllegalStateException("Failed to create recordings directory at $path. Error: ${error?.localizedDescription ?: "Unknown error"}")
+                    throw IllegalStateException("Failed to create recordings directory at $path. Error: ${error?.description ?: "Unknown error"}")
                 }
             } else {
                 // Verify it's a directory
-                var isDirectory: ObjCObjectVar<Boolean> = alloc()
+                val isDirectory = alloc<BooleanVar>()
                 if (!fileManager.fileExistsAtPath(path, isDirectory = isDirectory.ptr) || !isDirectory.value) {
                     throw IllegalStateException("Path exists but is not a directory: $path")
                 }
@@ -90,7 +91,7 @@ actual class PlatformAudioFileManager {
                 val success = fileManager.removeItemAtPath(filePath, errorPtr.ptr)
                 if (!success) {
                     val error = errorPtr.value
-                    println("Error deleting file $filePath: ${error?.localizedDescription ?: "Unknown error"}")
+                    println("Error deleting file $filePath: ${error?.description ?: "Unknown error"}")
                 }
                 success
             }

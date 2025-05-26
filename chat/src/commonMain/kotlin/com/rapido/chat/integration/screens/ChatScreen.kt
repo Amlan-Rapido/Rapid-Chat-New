@@ -13,8 +13,6 @@ import com.rapido.chat.ui.components.MessageList
 import com.rapido.chat.ui.components.VoiceRecordingIndicator
 import com.rapido.voice_recorder.VoiceRecorderState
 
-expect fun platformLogD(tag: String, message: String)
-
 @Composable
 fun ChatScreen(
     viewModel: ChatViewModelInterface

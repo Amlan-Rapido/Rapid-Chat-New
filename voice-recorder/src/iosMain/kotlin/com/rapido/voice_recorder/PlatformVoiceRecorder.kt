@@ -72,18 +72,14 @@ actual class PlatformVoiceRecorder {
                     throw Exception("Failed to initialize recorder")
                 }
 
-                if (recorder != null) {
-                    recorder.prepareToRecord()
-                    if (recorder.record()) {
-                        // Recording started successfully
-                        recorderRef.value = recorder
-                        currentOutputFilePath = outputFilePath
-                        recordingStartTimeMs = getCurrentTimeMs()
-                    } else {
-                        throw Exception("Failed to start recording")
-                    }
+                recorder.prepareToRecord()
+                if (recorder.record()) {
+                    // Recording started successfully
+                    recorderRef.value = recorder
+                    currentOutputFilePath = outputFilePath
+                    recordingStartTimeMs = getCurrentTimeMs()
                 } else {
-                    throw Exception("Failed to create AVAudioRecorder")
+                    throw Exception("Failed to start recording")
                 }
             }
         } catch (e: Exception) {
@@ -169,15 +165,12 @@ actual class PlatformVoiceRecorder {
                 val player = AVAudioPlayer(contentsOfURL = fileURL, error = error.ptr)
                 
                 if (player == null) {
-                    val errorObj = error.value
-                    val errorMsg = "Failed to initialize player: ${errorObj?.localizedDescription ?: "Unknown error"}"
-                    debugLog(errorMsg)
-                    throw Exception(errorMsg)
+                    throw Exception("Failed to initialize player")
                 }
                 
                 debugLog("Configuring player")
                 player.delegate = playerDelegate
-                player.volume = 1.0
+                player.setVolume(1.0f)
                 if (!player.prepareToPlay()) {
                     debugLog("Failed to prepare player")
                     throw Exception("Failed to prepare player")
@@ -199,32 +192,25 @@ actual class PlatformVoiceRecorder {
             throw e
         }
     }
-    
-    actual suspend fun pausePlatformPlayback() {
-        val player = playerRef.value ?: return
-        player.pause()
-    }
-    
-    actual suspend fun resumePlatformPlayback() {
-        val player = playerRef.value ?: return
-        player.play()
-    }
-    
+
     actual suspend fun stopPlatformPlayback() {
-        debugLog("Stopping playback")
-        val player = playerRef.value
-        if (player != null) {
-            player.stop()
-            debugLog("Playback stopped")
-        }
+        playerRef.value?.stop()
         playerRef.value = null
     }
-    
+
+    actual suspend fun pausePlatformPlayback() {
+        playerRef.value?.pause()
+    }
+
+    actual suspend fun resumePlatformPlayback() {
+        playerRef.value?.play()
+    }
+
     actual fun getCurrentPlaybackPositionMs(): Long {
         val player = playerRef.value ?: return 0L
         return (player.currentTime * 1000).toLong()
     }
-    
+
     actual fun setOnPlaybackCompletedListener(listener: () -> Unit) {
         onPlaybackCompletedListener = listener
     }
@@ -257,6 +243,6 @@ actual class PlatformVoiceRecorder {
     }
 
     private fun debugLog(message: String) {
-        println("[PlatformVoiceRecorder-iOS] $message")
+        println("[PlatformVoiceRecorder] $message")
     }
 }
