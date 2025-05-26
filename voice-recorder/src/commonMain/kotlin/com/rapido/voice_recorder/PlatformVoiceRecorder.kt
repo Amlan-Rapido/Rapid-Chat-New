@@ -7,8 +7,6 @@ expect class PlatformVoiceRecorder {
 
     suspend fun stopPlatformRecording(): RecordedAudio
 
-    suspend fun cancelPlatformRecording()
-
     // Playback
     suspend fun startPlatformPlayback(filePath: String)
 

@@ -14,8 +14,8 @@ interface VoiceRecorderIntegration {
     
     // Recording operations
     suspend fun startRecording()
-    suspend fun stopRecording(): RecordedAudio
-    suspend fun cancelRecording()
+    suspend fun finishAndSendRecording(): RecordedAudio
+    suspend fun deleteRecording()
     
     // Playback operations
     suspend fun playRecording(audio: RecordedAudio)

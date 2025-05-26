@@ -18,7 +18,7 @@ interface ChatRepository {
     
     // Voice message operations
     suspend fun startVoiceMessage()
-    suspend fun cancelVoiceMessage()
+    suspend fun deleteVoiceMessage()
     suspend fun finishAndSendVoiceMessage(): ChatMessage?
     
     // Voice message playback

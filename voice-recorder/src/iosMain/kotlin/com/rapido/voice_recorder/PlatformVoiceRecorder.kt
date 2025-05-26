@@ -126,24 +126,24 @@ actual class PlatformVoiceRecorder {
         )
     }
 
-    actual suspend fun cancelPlatformRecording() {
-        val recorder = recorderRef.value
-        val filePath = currentOutputFilePath
-
-        // Stop recording
-        recorder?.stop()
-        recorderRef.value = null
-
-        // Delete the file if it exists
-        if (filePath != null) {
-            val fileManager = NSFileManager.defaultManager
-            if (fileManager.fileExistsAtPath(filePath)) {
-                fileManager.removeItemAtPath(filePath, null)
-            }
+    actual suspend fun deletePlatformRecording(filePath: String): Boolean {
+        // Stop playback if needed
+        if (playerRef.value != null) {
+            stopPlatformPlayback()
         }
-
-        // Reset state
-        currentOutputFilePath = null
+        
+        // Delete the file
+        val fileManager = NSFileManager.defaultManager
+        return if (fileManager.fileExistsAtPath(filePath)) {
+            try {
+                fileManager.removeItemAtPath(filePath, null)
+                true
+            } catch (e: Exception) {
+                false
+            }
+        } else {
+            false
+        }
     }
     
     // Playback methods
@@ -209,26 +209,6 @@ actual class PlatformVoiceRecorder {
     actual fun getCurrentPlaybackPositionMs(): Long {
         val player = playerRef.value ?: return 0L
         return (player.currentTime * 1000).toLong()
-    }
-    
-    actual suspend fun deletePlatformRecording(filePath: String): Boolean {
-        // Stop playback if needed
-        if (playerRef.value != null) {
-            stopPlatformPlayback()
-        }
-        
-        // Delete the file
-        val fileManager = NSFileManager.defaultManager
-        return if (fileManager.fileExistsAtPath(filePath)) {
-            try {
-                fileManager.removeItemAtPath(filePath, null)
-                true
-            } catch (e: Exception) {
-                false
-            }
-        } else {
-            false
-        }
     }
     
     actual fun setOnPlaybackCompletedListener(listener: () -> Unit) {

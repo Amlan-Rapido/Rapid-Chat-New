@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
 class VoiceRecorderImpl(
-    private val platformRecorder: PlatformVoiceRecorder,
+    private val platformVoiceRecorder: PlatformVoiceRecorder,
     private val platformAudioFileManager: PlatformAudioFileManager
 ) : VoiceRecorder {
     private val _state = MutableStateFlow<VoiceRecorderState>(VoiceRecorderState.Idle)
@@ -27,7 +27,7 @@ class VoiceRecorderImpl(
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     
     init {
-        platformRecorder.setOnPlaybackCompletedListener {
+        platformVoiceRecorder.setOnPlaybackCompletedListener {
             scope.launch {
                 handlePlaybackCompleted()
             }
@@ -49,7 +49,7 @@ class VoiceRecorderImpl(
     private suspend fun startRecordingInternal() {
         try {
             val outputFilePath = platformAudioFileManager.createRecordingFilePath()
-            platformRecorder.startPlatformRecording(outputFilePath)
+            platformVoiceRecorder.startPlatformRecording(outputFilePath)
             recordingStartTimeMs = getCurrentTimeMs()
             _state.value = VoiceRecorderState.Recording(0L)
 
@@ -65,12 +65,12 @@ class VoiceRecorderImpl(
         }
     }
 
-    override suspend fun stopRecording(): RecordedAudio {
+    override suspend fun finishAndSendRecording(): RecordedAudio {
         when (val currentState = state.value) {
             is VoiceRecorderState.Recording -> {
                 try {
                     updateJob?.cancel()
-                    val recordedAudio = platformRecorder.stopPlatformRecording()
+                    val recordedAudio = platformVoiceRecorder.stopPlatformRecording()
                     _state.value = VoiceRecorderState.Preview(recordedAudio, playing = false)
                     return recordedAudio
                 } catch (e: Exception) {
@@ -83,12 +83,19 @@ class VoiceRecorderImpl(
         }
     }
 
-    override suspend fun cancelRecording() {
+    override suspend fun deleteRecording() {
         when (state.value) {
             is VoiceRecorderState.Recording -> {
                 try {
                     updateJob?.cancel()
-                    platformRecorder.cancelPlatformRecording()
+                    // Get the current file path before stopping
+                    val currentFilePath = (state.value as? VoiceRecorderState.Recording)?.let {
+                        platformVoiceRecorder.stopPlatformRecording().filePath
+                    }
+                    // Delete the file if we have it
+                    currentFilePath?.let {
+                        platformVoiceRecorder.deletePlatformRecording(it)
+                    }
                     _state.value = VoiceRecorderState.Idle
                 } catch (e: Exception) {
                     val wrappedException = VoiceRecorderException.RecordingFailedException(cause = e)
@@ -105,7 +112,7 @@ class VoiceRecorderImpl(
             is VoiceRecorderState.Idle,
             is VoiceRecorderState.Preview -> {
                 try {
-                    platformRecorder.startPlatformPlayback(audio.filePath)
+                    platformVoiceRecorder.startPlatformPlayback(audio.filePath)
                     _state.value = VoiceRecorderState.Preview(audio, playing = true)
                     startPositionTracking(audio)
                 } catch (e: Exception) {
@@ -123,11 +130,11 @@ class VoiceRecorderImpl(
             is VoiceRecorderState.Preview -> {
                 if (currentState.playing) {
                     try {
-                        platformRecorder.pausePlatformPlayback()
+                        platformVoiceRecorder.pausePlatformPlayback()
                         updateJob?.cancel()
                         _state.value = currentState.copy(
                             playing = false,
-                            currentPositionMs = platformRecorder.getCurrentPlaybackPositionMs()
+                            currentPositionMs = platformVoiceRecorder.getCurrentPlaybackPositionMs()
                         )
                     } catch (e: Exception) {
                         val wrappedException = VoiceRecorderException.PlaybackFailedException(cause = e)
@@ -145,7 +152,7 @@ class VoiceRecorderImpl(
             is VoiceRecorderState.Preview -> {
                 if (!currentState.playing) {
                     try {
-                        platformRecorder.resumePlatformPlayback()
+                        platformVoiceRecorder.resumePlatformPlayback()
                         _state.value = currentState.copy(playing = true)
                         startPositionTracking(currentState.audio)
                     } catch (e: Exception) {
@@ -164,7 +171,7 @@ class VoiceRecorderImpl(
             is VoiceRecorderState.Preview -> {
                 if (currentState.playing) {
                     try {
-                        platformRecorder.stopPlatformPlayback()
+                        platformVoiceRecorder.stopPlatformPlayback()
                         updateJob?.cancel()
                         _state.value = currentState.copy(
                             playing = false,
@@ -191,7 +198,7 @@ class VoiceRecorderImpl(
                 stopPlayback()
             }
             
-            val result = platformAudioFileManager.deleteRecording(audio.filePath)
+            val result = platformVoiceRecorder.deletePlatformRecording(audio.filePath)
             if (result) {
                 _state.value = VoiceRecorderState.Idle
             }
@@ -206,7 +213,7 @@ class VoiceRecorderImpl(
     override fun release() {
         updateJob?.cancel()
         scope.cancel() // Cancel all coroutines
-        platformRecorder.release()
+        platformVoiceRecorder.release()
     }
     
     private fun startPositionTracking(audio: RecordedAudio) {
@@ -214,7 +221,7 @@ class VoiceRecorderImpl(
         updateJob = scope.launch {
             while (isActive) {
                 try {
-                    val position = platformRecorder.getCurrentPlaybackPositionMs()
+                    val position = platformVoiceRecorder.getCurrentPlaybackPositionMs()
                     _state.value = (state.value as? VoiceRecorderState.Preview)?.copy(
                         currentPositionMs = position
                     ) ?: break

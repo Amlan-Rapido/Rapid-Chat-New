@@ -19,9 +19,9 @@ class VoiceRecorderIntegrationImpl(
     
     override suspend fun startRecording() = voiceRecorder.startRecording()
     
-    override suspend fun stopRecording(): RecordedAudio = voiceRecorder.stopRecording()
+    override suspend fun finishAndSendRecording(): RecordedAudio = voiceRecorder.finishAndSendRecording()
     
-    override suspend fun cancelRecording() = voiceRecorder.cancelRecording()
+    override suspend fun deleteRecording() = voiceRecorder.deleteRecording()
     
     override suspend fun playRecording(audio: RecordedAudio) = voiceRecorder.playRecording(audio)
     

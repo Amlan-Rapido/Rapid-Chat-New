@@ -26,14 +26,14 @@ interface VoiceRecorder {
      * @throws VoiceRecorderException.RecordingFailedException if stopping the recording fails
      * @return RecordedAudio object containing the recording details
      */
-    suspend fun stopRecording(): RecordedAudio
+    suspend fun finishAndSendRecording(): RecordedAudio
 
     /**
-     * Cancels the current recording and deletes the partial recording file.
+     * Deletes the current recording and cleans up resources.
      * @throws VoiceRecorderException.InvalidStateException if not currently recording
-     * @throws VoiceRecorderException.RecordingFailedException if canceling the recording fails
+     * @throws VoiceRecorderException.RecordingFailedException if deleting the recording fails
      */
-    suspend fun cancelRecording()
+    suspend fun deleteRecording()
     
     /**
      * Starts playing a recorded audio file.

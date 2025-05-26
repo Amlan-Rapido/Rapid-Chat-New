@@ -30,12 +30,12 @@ import com.rapido.chat.ui.utils.formatDuration
  * A simplified component that shows when voice recording is in progress.
  *
  * @param durationMs The current duration of the recording in milliseconds
- * @param onCancelClick Callback when the cancel button is clicked
+ * @param onDeleteClick Callback when the delete button is clicked
  */
 @Composable
 fun VoiceRecordingIndicator(
     durationMs: Long,
-    onCancelClick: () -> Unit
+    onDeleteClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -89,14 +89,14 @@ fun VoiceRecordingIndicator(
                 style = MaterialTheme.typography.bodyMedium
             )
             
-            // Cancel button
+            // Delete button
             IconButton(
-                onClick = onCancelClick,
+                onClick = onDeleteClick,
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     imageVector = Icons.Filled.Clear,
-                    contentDescription = "Cancel recording",
+                    contentDescription = "Delete recording",
                     tint = MaterialTheme.colorScheme.onErrorContainer
                 )
             }

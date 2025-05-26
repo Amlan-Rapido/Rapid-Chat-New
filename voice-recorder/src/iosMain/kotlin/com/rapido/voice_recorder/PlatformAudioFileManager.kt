@@ -17,7 +17,7 @@ import kotlinx.datetime.Clock
 actual class PlatformAudioFileManager {
     private val fileManager = NSFileManager.defaultManager
 
-    @OptIn(ExperimentalForeignApi::class)
+    @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
     private val recordingsDir: String by lazy {
         val paths = fileManager.URLsForDirectory(
             directory = NSDocumentDirectory,

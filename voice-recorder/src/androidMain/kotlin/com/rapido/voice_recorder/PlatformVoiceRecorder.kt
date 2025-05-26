@@ -72,26 +72,12 @@ actual class PlatformVoiceRecorder {
         }
     }
 
-    actual suspend fun cancelPlatformRecording() = withContext(Dispatchers.IO) {
+    actual suspend fun deletePlatformRecording(filePath: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            mediaRecorder?.let {
-                try {
-                    it.stop()
-                } catch (_: Exception) {
-                    // ignore if invalid state
-                } finally {
-                    it.release()
-                }
-            }
-            mediaRecorder = null
-
-            currentOutputFilePath?.let { filePath ->
-                platformAudioFileManager.deleteRecording(filePath)
-            }
-            currentOutputFilePath = null
+            stopPlatformPlayback()
+            platformAudioFileManager.deleteRecording(filePath)
         } catch (_: Exception) {
-            mediaRecorder?.release()
-            mediaRecorder = null
+            false
         }
     }
 
@@ -139,15 +125,6 @@ actual class PlatformVoiceRecorder {
             mediaPlayer?.currentPosition?.toLong() ?: 0L
         } catch (_: Exception) {
             0L
-        }
-    }
-
-    actual suspend fun deletePlatformRecording(filePath: String): Boolean = withContext(Dispatchers.IO) {
-        try {
-            stopPlatformPlayback()
-            platformAudioFileManager.deleteRecording(filePath)
-        } catch (_: Exception) {
-            false
         }
     }
 

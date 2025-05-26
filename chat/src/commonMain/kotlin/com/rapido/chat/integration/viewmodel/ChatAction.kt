@@ -9,7 +9,7 @@ sealed class ChatAction {
 
     data object StartVoiceMessage : ChatAction()
 
-    data object CancelVoiceMessage : ChatAction()
+    data object DeleteVoiceMessage : ChatAction()
 
     data object FinishVoiceMessage : ChatAction()
 

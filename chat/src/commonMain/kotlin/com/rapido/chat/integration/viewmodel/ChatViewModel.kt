@@ -33,7 +33,7 @@ class ChatViewModel(
         when (action) {
             is ChatAction.SendTextMessage -> sendTextMessage(action.content)
             is ChatAction.StartVoiceMessage -> startVoiceMessage()
-            is ChatAction.CancelVoiceMessage -> cancelVoiceMessage()
+            is ChatAction.DeleteVoiceMessage -> deleteVoiceMessage()
             is ChatAction.FinishVoiceMessage -> finishVoiceMessage()
             is ChatAction.PlayVoiceMessage -> playVoiceMessage(action.messageId)
             is ChatAction.PauseVoiceMessage -> pauseVoiceMessage(action.messageId)
@@ -76,10 +76,10 @@ class ChatViewModel(
         }
     }
 
-    private fun cancelVoiceMessage() {
+    private fun deleteVoiceMessage() {
         viewModelScope.launch {
             try {
-                chatRepository.cancelVoiceMessage()
+                chatRepository.deleteVoiceMessage()
             } catch (e: Exception) {
                 _uiState.value = ChatUiState.Error("Failed to cancel recording: ${e.message}")
             }

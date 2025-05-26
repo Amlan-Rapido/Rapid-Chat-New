@@ -5,6 +5,7 @@ import com.rapido.chat.data.model.ChatMessage
 import com.rapido.chat.data.model.MessageType
 import com.rapido.chat.data.model.Sender
 import com.rapido.chat.data.repository.ChatRepository
+import com.rapido.chat.integration.screens.platformLogD
 import com.rapido.voice_recorder.RecordedAudio
 import com.rapido.voice_recorder.VoiceRecorderState
 import kotlinx.coroutines.flow.Flow
@@ -59,14 +60,14 @@ class ChatRepositoryImpl(
         voiceRecorderIntegration.startRecording()
     }
     
-    override suspend fun cancelVoiceMessage() {
-        voiceRecorderIntegration.cancelRecording()
+    override suspend fun deleteVoiceMessage() {
+        voiceRecorderIntegration.deleteRecording()
         currentRecording = null
     }
     
     override suspend fun finishAndSendVoiceMessage(): ChatMessage? {
         return try {
-            val recordedAudio = voiceRecorderIntegration.stopRecording()
+            val recordedAudio = voiceRecorderIntegration.finishAndSendRecording()
             currentRecording = recordedAudio
             
             val message = ChatMessage(
@@ -83,6 +84,7 @@ class ChatRepositoryImpl(
             addMessage(message)
             message
         } catch (e: Exception) {
+            platformLogD("ChatRepository","Exception ${e.message} occured during finishAndSendVoiceMessage from ChatRepository")
             null
         }
     }
