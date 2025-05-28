@@ -12,7 +12,7 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/chat" />
-            <option value="$PROJECT_DIR$/voice-recorder" />
+            <option value="$PROJECT_DIR$/voicemessagesdk" />
           </set>
         </option>
       </GradleProjectSettings>

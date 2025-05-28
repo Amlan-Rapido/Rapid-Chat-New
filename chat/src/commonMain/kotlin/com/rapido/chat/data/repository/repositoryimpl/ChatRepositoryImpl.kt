@@ -6,14 +6,12 @@ import com.rapido.chat.data.model.MessageType
 import com.rapido.chat.data.model.Sender
 import com.rapido.chat.data.repository.ChatRepository
 import com.rapido.chat.integration.screens.platformLogD
-import com.rapido.voice_recorder.RecordedAudio
-import com.rapido.voice_recorder.VoiceRecorderState
-import kotlinx.coroutines.flow.Flow
+import com.rapido.voicemessagesdk.core.RecordedAudio
+import com.rapido.voicemessagesdk.core.VoiceRecorderState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.Clock
-import kotlin.random.Random
 
 /**
  * Implementation of the ChatRepository interface.

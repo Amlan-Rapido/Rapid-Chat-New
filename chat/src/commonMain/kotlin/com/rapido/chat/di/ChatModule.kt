@@ -6,7 +6,7 @@ import com.rapido.chat.data.repository.ChatRepository
 import com.rapido.chat.data.repository.repositoryimpl.ChatRepositoryImpl
 import com.rapido.chat.integration.viewmodel.ChatViewModel
 import com.rapido.chat.integration.viewmodel.ChatViewModelInterface
-import com.rapido.voice_recorder.di.voiceRecorderModule
+import com.rapido.voicemessagesdk.di.voiceRecorderModule
 import org.koin.core.module.Module
 import org.koin.dsl.module
 

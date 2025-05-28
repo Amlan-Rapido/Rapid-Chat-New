@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.rapido.chat.data.model.ChatMessage
-import com.rapido.voice_recorder.VoiceRecorderState
+import com.rapido.voicemessagesdk.core.VoiceRecorderState
 
 @Composable
 fun MessageList(

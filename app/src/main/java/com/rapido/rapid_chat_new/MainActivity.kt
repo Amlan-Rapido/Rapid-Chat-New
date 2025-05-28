@@ -17,8 +17,8 @@ import com.rapido.chat.integration.screens.ChatScreen
 import com.rapido.rapid_chat_new.presentation.AndroidChatViewModel
 import com.rapido.rapid_chat_new.ui.theme.RapidChatNewTheme
 import com.rapido.rapid_chat_new.utils.PermissionManager
-import com.rapido.voice_recorder.PlatformContextProvider
-import com.rapido.voice_recorder.VoiceRecorderState
+import com.rapido.voicemessagesdk.PlatformContextProvider
+import com.rapido.voicemessagesdk.core.VoiceRecorderState
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 

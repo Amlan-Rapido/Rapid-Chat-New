@@ -1,6 +1,7 @@
 package com.rapido.chat.integration.viewmodel
 
-import com.rapido.voice_recorder.RecordedAudio
+import com.rapido.voicemessagesdk.core.RecordedAudio
+
 
 /**
  * Represents the different actions that can be performed in the chat UI.

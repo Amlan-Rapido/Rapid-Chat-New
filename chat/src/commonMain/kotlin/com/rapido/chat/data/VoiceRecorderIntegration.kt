@@ -1,8 +1,8 @@
 package com.rapido.chat.data
 
+import com.rapido.voicemessagesdk.core.RecordedAudio
 import kotlinx.coroutines.flow.StateFlow
-import com.rapido.voice_recorder.RecordedAudio
-import com.rapido.voice_recorder.VoiceRecorderState
+import com.rapido.voicemessagesdk.core.VoiceRecorderState
 
 /**
  * Interface for integrating with the voice recorder functionality.

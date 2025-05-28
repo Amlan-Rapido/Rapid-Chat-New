@@ -1,9 +1,8 @@
 package com.rapido.chat.data.repository
 
 import com.rapido.chat.data.model.ChatMessage
-import com.rapido.voice_recorder.RecordedAudio
-import com.rapido.voice_recorder.VoiceRecorderState
-import kotlinx.coroutines.flow.Flow
+import com.rapido.voicemessagesdk.core.RecordedAudio
+import com.rapido.voicemessagesdk.core.VoiceRecorderState
 import kotlinx.coroutines.flow.StateFlow
 
 /**

@@ -1,6 +1,6 @@
 package com.rapido.chat.integration.viewmodel
 
-import com.rapido.voice_recorder.VoiceRecorderState
+import com.rapido.voicemessagesdk.core.VoiceRecorderState
 import kotlinx.coroutines.flow.StateFlow
 
 interface ChatViewModelInterface {

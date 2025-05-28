@@ -1,7 +1,7 @@
 package com.rapido.chat.integration.viewmodel
 
 import com.rapido.chat.data.repository.ChatRepository
-import com.rapido.voice_recorder.VoiceRecorderState
+import com.rapido.voicemessagesdk.core.VoiceRecorderState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

@@ -7,21 +7,14 @@ import com.rapido.chat.data.repository.repositoryimpl.ChatRepositoryImpl
 import com.rapido.chat.integration.viewmodel.ChatViewModel
 import com.rapido.rapid_chat_new.presentation.AndroidChatViewModel
 import com.rapido.rapid_chat_new.utils.PermissionManager
-import com.rapido.voice_recorder.PlatformAudioFileManager
-import com.rapido.voice_recorder.PlatformVoiceRecorder
-import com.rapido.voice_recorder.VoiceRecorder
-import com.rapido.voice_recorder.VoiceRecorderImpl
+import com.rapido.voicemessagesdk.di.voiceRecorderModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
 val appModule = module {
-    // Platform dependencies
-    single { PlatformVoiceRecorder() }
-    single { PlatformAudioFileManager() }
-    
-    // Voice recorder module
-    single<VoiceRecorder> { VoiceRecorderImpl(get(), get()) }
+    // Include the voice recorder module from voicemessagesdk
+    includes(voiceRecorderModule())
     
     // Voice recorder integration
     single<VoiceRecorderIntegration> { VoiceRecorderIntegrationImpl(get()) }

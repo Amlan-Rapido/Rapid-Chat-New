@@ -5,13 +5,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.rapido.chat.integration.viewmodel.ChatAction
 import com.rapido.chat.integration.viewmodel.ChatUiState
 import com.rapido.chat.integration.viewmodel.ChatViewModelInterface
 import com.rapido.chat.ui.components.ChatInputBar
 import com.rapido.chat.ui.components.MessageList
 import com.rapido.chat.ui.components.VoiceRecordingIndicator
-import com.rapido.voice_recorder.VoiceRecorderState
+import com.rapido.voicemessagesdk.core.VoiceRecorderState
 
 @Composable
 fun ChatScreen(

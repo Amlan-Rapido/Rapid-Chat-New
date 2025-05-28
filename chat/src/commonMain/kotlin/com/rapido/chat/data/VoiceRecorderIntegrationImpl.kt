@@ -1,8 +1,8 @@
 package com.rapido.chat.data
 
-import com.rapido.voice_recorder.RecordedAudio
-import com.rapido.voice_recorder.VoiceRecorder
-import com.rapido.voice_recorder.VoiceRecorderState
+import com.rapido.voicemessagesdk.core.RecordedAudio
+import com.rapido.voicemessagesdk.core.VoiceRecorder
+import com.rapido.voicemessagesdk.core.VoiceRecorderState
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -31,7 +31,7 @@ class VoiceRecorderIntegrationImpl(
     
     override suspend fun stopPlayback() = voiceRecorder.stopPlayback()
     
-    override suspend fun deleteRecording(audio: RecordedAudio): Boolean = 
+    override suspend fun deleteRecording(audio: RecordedAudio): Boolean =
         voiceRecorder.deleteRecording(audio)
     
     override fun release() = voiceRecorder.release()

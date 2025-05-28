@@ -28,7 +28,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(project(":voice-recorder"))
+                implementation(project(":voicemessagesdk"))
                 implementation(libs.kotlinx.datetime.v060)
                 implementation(libs.kotlinx.coroutines.core)
 

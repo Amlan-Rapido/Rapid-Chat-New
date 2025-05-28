@@ -3,23 +3,13 @@ package com.rapido.rapid_chat_new.utils
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 
 class PermissionManager(private val context: Context) {
     
-    private val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        Log.d(TAG, "Using Android 13+ (API 33+) permissions")
-        arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_MEDIA_AUDIO)
-    } else {
-        Log.d(TAG, "Using legacy permissions for Android < 13")
-        arrayOf(
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-        )
-    }
+    // Since we're using cache directory storage, we only need RECORD_AUDIO permission
+    private val requiredPermissions = arrayOf(Manifest.permission.RECORD_AUDIO)
     
     fun areRecordingPermissionsGranted(): Boolean {
         val allGranted = requiredPermissions.all {
