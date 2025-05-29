@@ -4,7 +4,7 @@ import android.media.MediaRecorder
 import android.os.Build
 import android.util.Log
 import com.rapido.voicemessagesdk.PlatformContextProvider
-import com.rapido.voicemessagesdk.core.RecordedAudio
+import com.rapido.voicemessagesdk.core.VoiceMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -66,7 +66,7 @@ actual class PlatformAudioRecorder actual constructor() : AudioRecorder {
         }
     }
 
-    actual override suspend fun stopRecording(): RecordedAudio = withContext(Dispatchers.IO) {
+    actual override suspend fun stopRecording(): VoiceMessage = withContext(Dispatchers.IO) {
         try {
             val recorder = mediaRecorder ?: throw IllegalStateException("No recording in progress")
             val filePath = currentOutputFilePath ?: throw IllegalStateException("No output file path")
@@ -90,7 +90,7 @@ actual class PlatformAudioRecorder actual constructor() : AudioRecorder {
             )
             currentOutputFilePath = null
 
-            RecordedAudio(filePath, durationMs, file.length())
+            VoiceMessage(filePath, durationMs, file.length())
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping recording: ${e.message}", e)
             mediaRecorder?.release()

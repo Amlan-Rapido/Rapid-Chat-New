@@ -1,6 +1,6 @@
 package com.rapido.voicemessagesdk.recording
 
-import com.rapido.voicemessagesdk.core.RecordedAudio
+import com.rapido.voicemessagesdk.core.VoiceMessage
 
 /**
  * Interface for audio recording operations.
@@ -17,7 +17,7 @@ interface AudioRecorder {
      * Stops the current recording and returns the recorded audio information.
      * @return RecordedAudio containing the recording details
      */
-    suspend fun stopRecording(): RecordedAudio
+    suspend fun stopRecording(): VoiceMessage
 
     /**
      * Gets the current recording file path.

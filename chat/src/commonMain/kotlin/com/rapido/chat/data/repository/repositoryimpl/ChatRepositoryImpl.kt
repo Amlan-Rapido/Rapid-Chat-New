@@ -1,13 +1,15 @@
 package com.rapido.chat.data.repository.repositoryimpl
 
-import com.rapido.chat.data.VoiceRecorderIntegration
 import com.rapido.chat.data.model.ChatMessage
 import com.rapido.chat.data.model.MessageType
 import com.rapido.chat.data.model.Sender
 import com.rapido.chat.data.repository.ChatRepository
 import com.rapido.chat.integration.screens.platformLogD
-import com.rapido.voicemessagesdk.core.RecordedAudio
+import com.rapido.voicemessagesdk.core.VoiceMessage
+import com.rapido.voicemessagesdk.core.VoiceMessageManager
+import com.rapido.voicemessagesdk.core.VoiceRecorder
 import com.rapido.voicemessagesdk.core.VoiceRecorderState
+import com.rapido.voicemessagesdk.ui.VoiceMessageData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,22 +17,21 @@ import kotlinx.datetime.Clock
 
 /**
  * Implementation of the ChatRepository interface.
- * Manages chat messages and interacts with the VoiceRecorderIntegration.
+ * Manages chat messages and voice message functionality.
  *
- * @param voiceRecorderIntegration Integration for handling voice recording functionality
+ * @param voiceRecorder The voice recorder for playback functionality
+ * @param voiceMessageManager The voice message manager for simplified integration
  */
 class ChatRepositoryImpl(
-    private val voiceRecorderIntegration: VoiceRecorderIntegration
+    private val voiceRecorder: VoiceRecorder,
+    override val voiceMessageManager: VoiceMessageManager
 ) : ChatRepository {
     
     // In-memory storage for messages
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     
     // Map to store audio recordings by message ID
-    private val audioRecordings = mutableMapOf<String, RecordedAudio>()
-    
-    // Current recording for when a voice message is being created
-    private var currentRecording: RecordedAudio? = null
+    private val audioRecordings = mutableMapOf<String, VoiceMessage>()
 
     init {
         // Add initial welcome messages
@@ -39,7 +40,7 @@ class ChatRepositoryImpl(
 
     override val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
     
-    override val voiceRecorderState: StateFlow<VoiceRecorderState> = voiceRecorderIntegration.state
+    override val voiceRecorderState: StateFlow<VoiceRecorderState> = voiceRecorder.state
     
     override suspend fun sendTextMessage(content: String) {
         if (content.isBlank()) return
@@ -60,7 +61,7 @@ class ChatRepositoryImpl(
         // If it's a voice message, delete the audio file
         if (message.type == MessageType.VOICE) {
             audioRecordings[messageId]?.let { audio ->
-                voiceRecorderIntegration.deleteRecording(audio)
+                voiceRecorder.deleteRecording(audio)
                 audioRecordings.remove(messageId)
             }
         }
@@ -68,63 +69,48 @@ class ChatRepositoryImpl(
         _messages.value = _messages.value.filter { it.id != messageId }
     }
     
-    override suspend fun startVoiceRecording() {
-        voiceRecorderIntegration.startRecording()
-    }
-    
-    override suspend fun finishVoiceRecording() {
-        currentRecording = voiceRecorderIntegration.finishAndSendRecording()
-    }
-    
-    override suspend fun deleteCurrentVoiceRecording() {
-        voiceRecorderIntegration.deleteRecording()
-        currentRecording = null
-    }
-    
-    override suspend fun finishAndSendVoiceMessage(): ChatMessage? {
+    override suspend fun sendVoiceMessageData(voiceMessageData: VoiceMessageData): ChatMessage? {
         return try {
-            val recordedAudio = currentRecording ?: voiceRecorderIntegration.finishAndSendRecording()
-            
             val message = ChatMessage(
                 id = generateRandomId(),
                 sender = Sender.USER,
                 timestamp = Clock.System.now().toEpochMilliseconds(),
                 type = MessageType.VOICE,
                 content = "",
-                audioUrl = recordedAudio.filePath,
-                audioDuration = recordedAudio.durationMs
+                audioUrl = voiceMessageData.filePath,
+                audioDuration = voiceMessageData.durationMs
             )
             
-            audioRecordings[message.id] = recordedAudio
+            // Store the voice message for playback
+            audioRecordings[message.id] = voiceMessageData.voiceMessage
             addMessage(message)
-            currentRecording = null
             message
         } catch (e: Exception) {
-            platformLogD("ChatRepository", "Exception ${e.message} occurred during finishAndSendVoiceMessage")
+            platformLogD("ChatRepository", "Exception ${e.message} occurred during sendVoiceMessageData")
             null
         }
     }
     
     override suspend fun playVoiceMessage(messageId: String) {
         audioRecordings[messageId]?.let { audio ->
-            voiceRecorderIntegration.playRecording(audio)
+            voiceRecorder.playRecording(audio)
         }
     }
     
-    override suspend fun playVoiceRecording(audio: RecordedAudio) {
-        voiceRecorderIntegration.playRecording(audio)
+    override suspend fun playVoiceRecording(audio: VoiceMessage) {
+        voiceRecorder.playRecording(audio)
     }
     
     override suspend fun pauseVoicePlayback() {
-        voiceRecorderIntegration.pausePlayback()
+        voiceRecorder.pausePlayback()
     }
     
     override suspend fun resumeVoicePlayback() {
-        voiceRecorderIntegration.resumePlayback()
+        voiceRecorder.resumePlayback()
     }
     
     override suspend fun stopVoicePlayback() {
-        voiceRecorderIntegration.stopPlayback()
+        voiceRecorder.stopPlayback()
     }
     
     private fun addMessage(message: ChatMessage) {

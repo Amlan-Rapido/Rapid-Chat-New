@@ -107,7 +107,7 @@ class MainActivity : ComponentActivity() {
                         }
                         is VoiceRecorderState.Preview -> {
                             if (state.playing) {
-                                Log.d(TAG, "Playing voice message: ${state.currentPositionMs}/${state.audio.durationMs}ms")
+                                Log.d(TAG, "Playing voice message: ${state.currentPositionMs}/${state.voiceMessage.durationMs}ms")
                             }
                         }
                         else -> { /* Other states don't need special handling */ }

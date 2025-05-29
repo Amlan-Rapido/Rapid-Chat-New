@@ -1,6 +1,7 @@
 package com.rapido.chat.integration.viewmodel
 
-import com.rapido.voicemessagesdk.core.RecordedAudio
+import com.rapido.voicemessagesdk.core.VoiceMessage
+import com.rapido.voicemessagesdk.ui.VoiceMessageData
 
 
 /**
@@ -10,24 +11,19 @@ sealed class ChatAction {
 
     data class SendTextMessage(val text: String) : ChatAction()
 
-    data object StartVoiceMessage : ChatAction()
+    // NEW SIMPLIFIED VOICE MESSAGE ACTION
+    data class SendVoiceMessageData(val voiceMessageData: VoiceMessageData) : ChatAction()
 
-    data object DeleteVoiceMessage : ChatAction()
-
-    data object FinishVoiceMessage : ChatAction()
-
-    data object SendVoiceMessage : ChatAction()
-
+    // VOICE PLAYBACK ACTIONS (still needed for playing sent messages)
     sealed class PlayVoiceMessage : ChatAction() {
         data class FromMessage(val messageId: String) : PlayVoiceMessage()
-        data class FromPreview(val audio: RecordedAudio) : PlayVoiceMessage()
+        data class FromPreview(val audio: VoiceMessage) : PlayVoiceMessage()
     }
 
     data object PauseVoiceMessage : ChatAction()
-
     data object ResumeVoiceMessage : ChatAction()
-
     data object StopVoiceMessage : ChatAction()
 
+    // MESSAGE MANAGEMENT
     data class DeleteMessage(val messageId: String) : ChatAction()
 } 

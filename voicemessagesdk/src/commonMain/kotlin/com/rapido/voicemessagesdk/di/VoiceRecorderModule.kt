@@ -4,6 +4,8 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 import com.rapido.voicemessagesdk.core.VoiceRecorder
 import com.rapido.voicemessagesdk.core.VoiceRecorderImpl
+import com.rapido.voicemessagesdk.core.VoiceMessageManager
+import com.rapido.voicemessagesdk.core.VoiceMessageManagerImpl
 import com.rapido.voicemessagesdk.recording.AudioRecorder
 import com.rapido.voicemessagesdk.recording.PlatformAudioRecorder
 import com.rapido.voicemessagesdk.playback.AudioPlayer
@@ -20,4 +22,5 @@ fun voiceRecorderModule(): Module = module {
     single<AudioRecorder> { createPlatformAudioRecorder() }
     single<AudioPlayer> { createPlatformAudioPlayer() }
     single<VoiceRecorder> { VoiceRecorderImpl(get(), get(), get()) }
+    single<VoiceMessageManager> { VoiceMessageManagerImpl(get()) }
 } 

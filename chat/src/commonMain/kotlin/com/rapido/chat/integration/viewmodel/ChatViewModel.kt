@@ -1,6 +1,7 @@
 package com.rapido.chat.integration.viewmodel
 
 import com.rapido.chat.data.repository.ChatRepository
+import com.rapido.voicemessagesdk.core.VoiceMessageManager
 import com.rapido.voicemessagesdk.core.VoiceRecorderState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +26,8 @@ class ChatViewModel(
 
     override val voiceRecorderState: StateFlow<VoiceRecorderState> = chatRepository.voiceRecorderState
     
+    override val voiceMessageManager: VoiceMessageManager = chatRepository.voiceMessageManager
+    
     init {
         viewModelScope.launch {
             chatRepository.messages
@@ -45,24 +48,9 @@ class ChatViewModel(
                     chatRepository.sendTextMessage(action.text)
                 }
             }
-            is ChatAction.StartVoiceMessage -> {
+            is ChatAction.SendVoiceMessageData -> {
                 viewModelScope.launch {
-                    chatRepository.startVoiceRecording()
-                }
-            }
-            is ChatAction.FinishVoiceMessage -> {
-                viewModelScope.launch {
-                    chatRepository.finishVoiceRecording()
-                }
-            }
-            is ChatAction.DeleteVoiceMessage -> {
-                viewModelScope.launch {
-                    chatRepository.deleteCurrentVoiceRecording()
-                }
-            }
-            is ChatAction.SendVoiceMessage -> {
-                viewModelScope.launch {
-                    chatRepository.finishAndSendVoiceMessage()
+                    chatRepository.sendVoiceMessageData(action.voiceMessageData)
                 }
             }
             is ChatAction.PlayVoiceMessage.FromMessage -> {

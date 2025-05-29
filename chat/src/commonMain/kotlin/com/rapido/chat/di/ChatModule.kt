@@ -1,7 +1,5 @@
 package com.rapido.chat.di
 
-import com.rapido.chat.data.VoiceRecorderIntegration
-import com.rapido.chat.data.VoiceRecorderIntegrationImpl
 import com.rapido.chat.data.repository.ChatRepository
 import com.rapido.chat.data.repository.repositoryimpl.ChatRepositoryImpl
 import com.rapido.chat.integration.viewmodel.ChatViewModel
@@ -15,11 +13,8 @@ fun chatModule(): Module = module {
     // Include voice recorder module
     includes(voiceRecorderModule())
     
-    // Voice recorder integration
-    single<VoiceRecorderIntegration> { VoiceRecorderIntegrationImpl(get()) }
-    
-    // Chat repository
-    single<ChatRepository> { ChatRepositoryImpl(get()) }
+    // Chat repository - now uses VoiceRecorder and VoiceMessageManager directly
+    single<ChatRepository> { ChatRepositoryImpl(get(), get()) }
 
     // ViewModel - provides ChatViewModel when ChatViewModelInterface is requested
     factory<ChatViewModelInterface> { ChatViewModel(get()) }

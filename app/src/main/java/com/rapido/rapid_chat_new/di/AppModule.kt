@@ -1,7 +1,5 @@
 package com.rapido.rapid_chat_new.di
 
-import com.rapido.chat.data.VoiceRecorderIntegration
-import com.rapido.chat.data.VoiceRecorderIntegrationImpl
 import com.rapido.chat.data.repository.ChatRepository
 import com.rapido.chat.data.repository.repositoryimpl.ChatRepositoryImpl
 import com.rapido.chat.integration.viewmodel.ChatViewModel
@@ -16,11 +14,8 @@ val appModule = module {
     // Include the voice recorder module from voicemessagesdk
     includes(voiceRecorderModule())
     
-    // Voice recorder integration
-    single<VoiceRecorderIntegration> { VoiceRecorderIntegrationImpl(get()) }
-    
-    // Chat repository
-    single<ChatRepository> { ChatRepositoryImpl(get()) }
+    // Chat repository - now uses VoiceRecorder and VoiceMessageManager directly
+    single<ChatRepository> { ChatRepositoryImpl(get(), get()) }
     
     // Common ViewModel (scoped to prevent multiple instances)
     single { ChatViewModel(get()) }

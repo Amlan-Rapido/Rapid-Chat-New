@@ -1,8 +1,10 @@
 package com.rapido.chat.data.repository
 
 import com.rapido.chat.data.model.ChatMessage
-import com.rapido.voicemessagesdk.core.RecordedAudio
+import com.rapido.voicemessagesdk.core.VoiceMessage
+import com.rapido.voicemessagesdk.core.VoiceMessageManager
 import com.rapido.voicemessagesdk.core.VoiceRecorderState
+import com.rapido.voicemessagesdk.ui.VoiceMessageData
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -16,19 +18,19 @@ interface ChatRepository {
     suspend fun sendTextMessage(content: String)
     suspend fun deleteMessage(messageId: String)
     
-    // Voice recording operations
-    suspend fun startVoiceRecording()
-    suspend fun finishVoiceRecording()
-    suspend fun deleteCurrentVoiceRecording()
-    suspend fun finishAndSendVoiceMessage(): ChatMessage?
+    // Voice message operations (simplified integration)
+    suspend fun sendVoiceMessageData(voiceMessageData: VoiceMessageData): ChatMessage?
     
-    // Voice playback operations
+    // Voice playback operations (for playing sent voice messages)
     suspend fun playVoiceMessage(messageId: String)
-    suspend fun playVoiceRecording(audio: RecordedAudio)
+    suspend fun playVoiceRecording(audio: VoiceMessage)
     suspend fun pauseVoicePlayback()
     suspend fun resumeVoicePlayback()
     suspend fun stopVoicePlayback()
     
     // Get current voice recorder state
     val voiceRecorderState: StateFlow<VoiceRecorderState>
+    
+    // Expose voice message manager for simplified integration
+    val voiceMessageManager: VoiceMessageManager
 } 

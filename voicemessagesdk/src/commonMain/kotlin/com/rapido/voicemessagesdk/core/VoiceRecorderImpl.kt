@@ -69,13 +69,13 @@ class VoiceRecorderImpl(
         }
     }
 
-    override suspend fun finishAndSendRecording(): RecordedAudio {
+    override suspend fun finishAndSendRecording(): VoiceMessage {
         when (val currentState = state.value) {
             is VoiceRecorderState.Recording -> {
                 try {
                     updateJob?.cancel()
                     val recordedAudio = audioRecorder.stopRecording()
-                    _state.value = VoiceRecorderState.Preview(recordedAudio, playing = false)
+                    _state.value = VoiceRecorderState.RecordingCompleted(recordedAudio)
                     return recordedAudio
                 } catch (e: Exception) {
                     val wrappedException = VoiceRecorderException.RecordingFailedException(cause = e)
@@ -118,7 +118,31 @@ class VoiceRecorderImpl(
                         stopPlayback()
                     }
                     // Delete the audio file
-                    audioFileManager.deleteRecording(previewState.audio.filePath)
+                    audioFileManager.deleteRecording(previewState.voiceMessage.filePath)
+                    _state.value = VoiceRecorderState.Idle
+                } catch (e: Exception) {
+                    val wrappedException = VoiceRecorderException.FileOperationException(cause = e)
+                    _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.FILE_OPERATION)
+                    throw wrappedException
+                }
+            }
+            is VoiceRecorderState.RecordingCompleted -> {
+                try {
+                    val completedState = state.value as VoiceRecorderState.RecordingCompleted
+                    // Delete the audio file
+                    audioFileManager.deleteRecording(completedState.voiceMessage.filePath)
+                    _state.value = VoiceRecorderState.Idle
+                } catch (e: Exception) {
+                    val wrappedException = VoiceRecorderException.FileOperationException(cause = e)
+                    _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.FILE_OPERATION)
+                    throw wrappedException
+                }
+            }
+            is VoiceRecorderState.ReadyToSend -> {
+                try {
+                    val readyState = state.value as VoiceRecorderState.ReadyToSend
+                    // Delete the audio file
+                    audioFileManager.deleteRecording(readyState.voiceMessage.filePath)
                     _state.value = VoiceRecorderState.Idle
                 } catch (e: Exception) {
                     val wrappedException = VoiceRecorderException.FileOperationException(cause = e)
@@ -130,10 +154,12 @@ class VoiceRecorderImpl(
         }
     }
 
-    override suspend fun playRecording(audio: RecordedAudio) {
+    override suspend fun playRecording(audio: VoiceMessage) {
         when (state.value) {
             is VoiceRecorderState.Idle,
-            is VoiceRecorderState.Preview -> {
+            is VoiceRecorderState.Preview,
+            is VoiceRecorderState.RecordingCompleted,
+            is VoiceRecorderState.ReadyToSend -> {
                 try {
                     audioPlayer.startPlayback(audio.filePath)
                     _state.value = VoiceRecorderState.Preview(audio, playing = true)
@@ -177,7 +203,7 @@ class VoiceRecorderImpl(
                     try {
                         audioPlayer.resumePlayback()
                         _state.value = currentState.copy(playing = true)
-                        startPositionTracking(currentState.audio)
+                        startPositionTracking(currentState.voiceMessage)
                     } catch (e: Exception) {
                         val wrappedException = VoiceRecorderException.PlaybackFailedException(cause = e)
                         _state.value = VoiceRecorderState.Error(wrappedException, VoiceRecorderState.ErrorSource.PLAYBACK)
@@ -213,11 +239,11 @@ class VoiceRecorderImpl(
         }
     }
 
-    override suspend fun deleteRecording(audio: RecordedAudio): Boolean {
+    override suspend fun deleteRecording(audio: VoiceMessage): Boolean {
         return try {
             // First stop playback if this audio is playing
             if (state.value is VoiceRecorderState.Preview &&
-                (state.value as VoiceRecorderState.Preview).audio == audio) {
+                (state.value as VoiceRecorderState.Preview).voiceMessage == audio) {
                 stopPlayback()
             }
 
@@ -233,6 +259,45 @@ class VoiceRecorderImpl(
         }
     }
 
+    override suspend fun enterPreviewMode(voiceMessage: VoiceMessage) {
+        when (state.value) {
+            is VoiceRecorderState.RecordingCompleted -> {
+                _state.value = VoiceRecorderState.Preview(voiceMessage, playing = false)
+            }
+            is VoiceRecorderState.ReadyToSend -> {
+                // Allow going back to preview from ready to send
+                _state.value = VoiceRecorderState.Preview(voiceMessage, playing = false)
+            }
+            else -> throw VoiceRecorderException.InvalidStateException("Cannot enter preview mode from current state: ${state.value}")
+        }
+    }
+
+    override suspend fun markReadyToSend(voiceMessage: VoiceMessage) {
+        when (state.value) {
+            is VoiceRecorderState.Preview -> {
+                // Stop playback if currently playing
+                if ((state.value as VoiceRecorderState.Preview).playing) {
+                    stopPlayback()
+                }
+                _state.value = VoiceRecorderState.ReadyToSend(voiceMessage)
+            }
+            is VoiceRecorderState.RecordingCompleted -> {
+                // Allow direct transition from completed to ready to send
+                _state.value = VoiceRecorderState.ReadyToSend(voiceMessage)
+            }
+            else -> throw VoiceRecorderException.InvalidStateException("Cannot mark ready to send from current state: ${state.value}")
+        }
+    }
+
+    override suspend fun transitionToIdle() {
+        // Stop any ongoing playback without deleting files
+        if (state.value is VoiceRecorderState.Preview && (state.value as VoiceRecorderState.Preview).playing) {
+            stopPlayback()
+        }
+        updateJob?.cancel()
+        _state.value = VoiceRecorderState.Idle
+    }
+
     override fun release() {
         updateJob?.cancel()
         scope.cancel() // Cancel all coroutines
@@ -240,7 +305,7 @@ class VoiceRecorderImpl(
         audioPlayer.release()
     }
 
-    private fun startPositionTracking(audio: RecordedAudio) {
+    private fun startPositionTracking(audio: VoiceMessage) {
         updateJob?.cancel()
         updateJob = scope.launch {
             while (isActive) {

@@ -12,8 +12,8 @@ import com.rapido.chat.integration.viewmodel.ChatUiState
 import com.rapido.chat.integration.viewmodel.ChatViewModelInterface
 import com.rapido.chat.ui.components.ChatInputBar
 import com.rapido.chat.ui.components.MessageList
-import com.rapido.chat.ui.components.VoiceRecordingIndicator
 import com.rapido.voicemessagesdk.core.VoiceRecorderState
+import com.rapido.voicemessagesdk.ui.VoiceMessageData
 
 @Composable
 fun ChatScreen(
@@ -24,24 +24,15 @@ fun ChatScreen(
     val voiceRecorderState by viewModel.voiceRecorderState.collectAsState()
 
     var inputText by remember { mutableStateOf("") }
-    val isRecording = voiceRecorderState is VoiceRecorderState.Recording
-    val isPreview = voiceRecorderState is VoiceRecorderState.Preview
     
-    // Calculate preview state values
-    val previewState = voiceRecorderState as? VoiceRecorderState.Preview
-    val isPlaying = previewState?.playing ?: false
-    val playbackProgress = if (previewState != null && previewState.audio.durationMs > 0) {
-        previewState.currentPositionMs.toFloat() / previewState.audio.durationMs.toFloat()
-    } else 0f
-
     // Track currently playing message
     var currentlyPlayingMessageId by remember { mutableStateOf<String?>(null) }
 
     // Update currently playing message when voice recorder state changes
     LaunchedEffect(voiceRecorderState) {
-        when (voiceRecorderState) {
+        when (val state = voiceRecorderState) {
             is VoiceRecorderState.Preview -> {
-                if (!(voiceRecorderState as VoiceRecorderState.Preview).playing) {
+                if (!state.playing) {
                     currentlyPlayingMessageId = null
                 }
             }
@@ -54,25 +45,38 @@ fun ChatScreen(
     
     // Log voice recorder state changes
     LaunchedEffect(voiceRecorderState) {
-        when (voiceRecorderState) {
+        when (val state = voiceRecorderState) {
             is VoiceRecorderState.Recording -> {
-                val duration = (voiceRecorderState as VoiceRecorderState.Recording).durationMs
+                val duration = state.durationMs
                 platformLogD(tag, "Recording in progress: $duration ms")
             }
             is VoiceRecorderState.Idle -> {
                 platformLogD(tag, "Voice recorder idle")
             }
             is VoiceRecorderState.Preview -> {
-                val previewState = voiceRecorderState as VoiceRecorderState.Preview
-                if (previewState.playing) {
+                if (state.playing) {
                     platformLogD(tag, "Playing voice message")
                 } else {
                     platformLogD(tag, "Voice playback paused")
                 }
             }
+            is VoiceRecorderState.RecordingCompleted -> {
+                platformLogD(tag, "Recording completed")
+            }
+            is VoiceRecorderState.ReadyToSend -> {
+                platformLogD(tag, "Voice message ready to send")
+            }
+            is VoiceRecorderState.Sending -> {
+                platformLogD(tag, "Sending voice message...")
+            }
+            is VoiceRecorderState.Sent -> {
+                platformLogD(tag, "Voice message sent successfully")
+            }
+            is VoiceRecorderState.SendFailed -> {
+                platformLogD(tag, "Voice message send failed: ${state.error.message}")
+            }
             is VoiceRecorderState.Error -> {
-                val errorState = voiceRecorderState as VoiceRecorderState.Error
-                platformLogD(tag, "Voice recorder error: ${errorState.exception.message}")
+                platformLogD(tag, "Voice recorder error: ${state.exception.message}")
             }
         }
     }
@@ -82,66 +86,29 @@ fun ChatScreen(
             .fillMaxSize()
             .statusBarsPadding(),
         bottomBar = {
-            Column {
-                // Show voice recording indicator when recording or in preview
-                if (isRecording || isPreview) {
-                    val recordingDuration = when (voiceRecorderState) {
-                        is VoiceRecorderState.Recording -> (voiceRecorderState as VoiceRecorderState.Recording).durationMs
-                        is VoiceRecorderState.Preview -> (voiceRecorderState as VoiceRecorderState.Preview).audio.durationMs
-                        else -> 0L
+            ChatInputBar(
+                text = inputText,
+                onTextChanged = { newText -> 
+                    inputText = newText 
+                },
+                onSendTextMessage = {
+                    if (inputText.isNotBlank()) {
+                        platformLogD(tag, "Sending text message: $inputText")
+                        viewModel.handleAction(ChatAction.SendTextMessage(inputText))
+                        inputText = ""
                     }
-                    
-                    VoiceRecordingIndicator(
-                        durationMs = recordingDuration,
-                        isRecording = isRecording,
-                        isPlaying = isPlaying,
-                        progress = playbackProgress,
-                        onStopRecording = {
-                            platformLogD(tag, "Stopping voice recording")
-                            viewModel.handleAction(ChatAction.FinishVoiceMessage)
-                        },
-                        onPlayPauseClick = {
-                            if (isPlaying) {
-                                viewModel.handleAction(ChatAction.PauseVoiceMessage)
-                            } else {
-                                previewState?.audio?.let { audio ->
-                                    viewModel.handleAction(ChatAction.PlayVoiceMessage.FromPreview(audio))
-                                }
-                            }
-                        },
-                        onDeleteClick = {
-                            viewModel.handleAction(ChatAction.DeleteVoiceMessage)
-                        },
-                        onSendClick = {
-                            viewModel.handleAction(ChatAction.SendVoiceMessage)
-                            // Clear preview state after sending
-                            viewModel.handleAction(ChatAction.StopVoiceMessage)
-                        }
-                    )
-                }
-                
-                ChatInputBar(
-                    text = inputText,
-                    onTextChanged = { newText -> 
-                        // Only allow text input when not recording/previewing voice
-                        if (!isRecording && !isPreview) {
-                            inputText = newText 
-                        }
-                    },
-                    onSendClick = {
-                        if (inputText.isNotBlank()) {
-                            platformLogD(tag, "Sending text message: $inputText")
-                            viewModel.handleAction(ChatAction.SendTextMessage(inputText))
-                            inputText = ""
-                        }
-                    },
-                    isRecording = isRecording,
-                    onVoiceRecordStart = {
-                        platformLogD(tag, "Starting voice recording")
-                        viewModel.handleAction(ChatAction.StartVoiceMessage)
-                    }
-                )
-            }
+                },
+                onSendVoiceMessage = { voiceMessageData: VoiceMessageData ->
+                    platformLogD(tag, "Sending voice message: ${voiceMessageData.durationMs}ms")
+                    // Create a chat message from the voice message data using the new simplified action
+                    viewModel.handleAction(ChatAction.SendVoiceMessageData(voiceMessageData))
+                },
+                onVoiceMessageError = { error ->
+                    platformLogD(tag, "Voice message error: $error")
+                    // TODO: Show error to user (snackbar, toast, etc.)
+                },
+                voiceMessageManager = viewModel.voiceMessageManager
+            )
         }
     ) { paddingValues ->
         when (val currentState = uiState) {

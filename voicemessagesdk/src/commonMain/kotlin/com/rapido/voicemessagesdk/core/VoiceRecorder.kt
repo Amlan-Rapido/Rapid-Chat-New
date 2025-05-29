@@ -26,7 +26,7 @@ interface VoiceRecorder {
      * @throws VoiceRecorderException.RecordingFailedException if stopping the recording fails
      * @return RecordedAudio object containing the recording details
      */
-    suspend fun finishAndSendRecording(): RecordedAudio
+    suspend fun finishAndSendRecording(): VoiceMessage
 
     /**
      * Deletes the current recording and cleans up resources.
@@ -40,7 +40,7 @@ interface VoiceRecorder {
      * @throws VoiceRecorderException.InvalidStateException if in an invalid state for playback
      * @throws VoiceRecorderException.PlaybackFailedException if playback fails to start
      */
-    suspend fun playRecording(audio: RecordedAudio)
+    suspend fun playRecording(audio: VoiceMessage)
 
     /**
      * Pauses the current playback.
@@ -68,7 +68,27 @@ interface VoiceRecorder {
      * @return true if deletion was successful, false otherwise
      * @throws VoiceRecorderException.FileOperationException if deletion fails with an error
      */
-    suspend fun deleteRecording(audio: RecordedAudio): Boolean
+    suspend fun deleteRecording(audio: VoiceMessage): Boolean
+
+    /**
+     * Transitions from RecordingCompleted state to Preview state for the given voice message.
+     * @param voiceMessage The voice message to preview
+     * @throws VoiceRecorderException.InvalidStateException if not in RecordingCompleted state
+     */
+    suspend fun enterPreviewMode(voiceMessage: VoiceMessage)
+
+    /**
+     * Transitions from Preview state to ReadyToSend state for the given voice message.
+     * @param voiceMessage The voice message to mark as ready to send
+     * @throws VoiceRecorderException.InvalidStateException if not in Preview state
+     */
+    suspend fun markReadyToSend(voiceMessage: VoiceMessage)
+
+    /**
+     * Transitions to idle state without deleting any files.
+     * This is useful when the file ownership has been transferred to another system.
+     */
+    suspend fun transitionToIdle()
 
     /**
      * Releases all resources used by the voice recorder.

@@ -1,6 +1,6 @@
 package com.rapido.voicemessagesdk.recording
 
-import com.rapido.voicemessagesdk.core.RecordedAudio
+import com.rapido.voicemessagesdk.core.VoiceMessage
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCObjectVar
@@ -87,7 +87,7 @@ actual class PlatformAudioRecorder actual constructor() : AudioRecorder {
         }
     }
 
-    actual override suspend fun stopRecording(): RecordedAudio {
+    actual override suspend fun stopRecording(): VoiceMessage {
         val recorder = recorderRef.value ?: throw IllegalStateException("No recording in progress")
         val filePath = currentOutputFilePath ?: throw IllegalStateException("No output file path")
 
@@ -112,7 +112,7 @@ actual class PlatformAudioRecorder actual constructor() : AudioRecorder {
             println("[PlatformAudioRecorder] Recording stopped successfully. Duration: ${durationMs}ms, Size: ${fileSize} bytes")
 
             // Return recorded audio data
-            return RecordedAudio(
+            return VoiceMessage(
                 filePath = filePath,
                 durationMs = durationMs,
                 sizeBytes = fileSize
